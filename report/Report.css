@@ -1,0 +1,93 @@
+body {
+    width: 850px;
+    margin-left:auto;
+    margin-right:auto;
+    margin-top: 180px;
+    font-weight: bold;
+    font-size: 1.3em;
+}
+.clear{clear:both;}
+
+h1{margin:0px;}
+
+h1, h2, h3 {
+	color: #000;
+}
+h1 { font-size: 1.4em; padding:0px; margin: 0px;}
+h2 { font-size: 1.2em;  padding:0px; margin: 0px;}
+h3 { font-size: .7em; font-weight: bold; padding:0px; margin: 0px;}
+
+a {
+  text-decoration:none;
+  padding:2px;
+  color:#000;
+}
+.tophead{
+}
+p{margin: 5px 0px;}
+
+.memo{
+  position: relative; display: block;text-align: left; padding-left: 80px; text-align: left; width:90%;
+}
+
+ .footer {
+  text-align: left;
+ }
+
+img{
+ 	width:100%;
+ 	height:auto;
+ }
+ 
+.memo .bg {
+  margin: 150px 220px;
+  opacity: 0.3;
+  position: absolute;
+}
+ 
+.customer{margin-bottom:30px;text-align: left;}
+
+.customer h4 {
+  font-weight: medium;
+  margin: 0 0 5px;
+}
+.customer h4 span {
+  font-weight: bold;
+}
+
+.table1{
+	font-size: 20px;
+}
+.table1 tr .rth{
+border:none;}
+
+#tableGd th {background: #f1f1f1}
+
+#tableGd th, td {
+  border: 1px solid #000;
+  text-align:left;
+  padding-left:5px;
+  font-weight: bold;
+}
+.printb a{
+  display: block;
+  width: 200px;
+  padding: 10px 5px;
+  border: 1px solid #eee;
+  position: absolute;
+  top: 10;
+  right:10;
+  text-align: center;
+}
+@media print {
+  body{
+    margin:180px auto 10px auto;
+    padding: 5px;
+  }
+  .printb{
+    display: none;
+  }
+  #print{
+    display:none;
+  }
+}

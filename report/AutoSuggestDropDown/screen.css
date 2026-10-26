@@ -1,0 +1,41 @@
+.autosuggest, .dropdown, .result{
+    margin: 0;
+    padding: 0;
+    border: 0;
+    width: 300px;
+}
+
+.dropdown table{
+	position:absolute;
+	text-align:left;
+}
+
+.autosuggest{
+    padding: 4px;
+    border: 1px solid #000;
+}
+
+.result {
+    width: 300px;
+    list-style: none;
+}
+
+.result tr:nth-child(even){
+background-color: #ffc; /* pale yellow for odd rows */
+}
+.result tr:nth-child(odd) {
+background-color: #cef; /* pale blue for even rows */
+}
+
+
+.result tr{
+    padding: 5px;
+    border: 1px solid #000;
+    border-top: 0;
+    cursor: pointer;
+}
+
+.result tr:hover{
+    background: #000;
+    color: #fff;
+}

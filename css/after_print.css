@@ -1,0 +1,12 @@
+@charset "utf-8";
+
+#header, #sidebar1, #print, #footer #print_now{
+	visibility:hidden;
+}
+
+
+
+#title {
+font-family: verdana;
+font-size:17px;
+}
