@@ -46,7 +46,7 @@ Steps:
   - the before/after EXPLAIN summary for each hot shape (table, `type`, `key`, `rows`);
   - the perf table next to the baseline (ms and queries);
   - the total migration run time on the fixture.
-- No hot shape remains `type=ALL` on a table over 1,000 rows. The exceptions are full-table aggregates by design (`Accounts.php` cash-in-hand `SUM` over the whole table); list them by name.
+- Selective hot lookups/ranges must use suitable indexes rather than `type=ALL` on tables over 1,000 rows. Full-table aggregates and genuinely broad full-history ranges may correctly use a scan; list those exceptions by query and measured selectivity. Do not add FORCE INDEX or redundant indexes merely to change the EXPLAIN label.
 - `down` then `up` leaves `SHOW CREATE TABLE` identical to the first `up`.
 
 ## S1.2 Production runbook for Phase 1
