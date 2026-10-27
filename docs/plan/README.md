@@ -82,7 +82,7 @@ Phase 2 can start as soon as Phase 0 is merged. It doesn't wait for Phase 1.
 | Slice | Title | Status |
 |-------|-------|--------|
 | S0.1 | Repo hygiene | merged |
-| S0.2 | Local stacks + fixture DB | todo |
+| S0.2 | Local stacks + fixture DB | merged |
 | S0.3 | Read-only characterization | todo |
 | S0.4 | Write-flow scenarios | todo |
 | S0.5 | Perf and query-count baseline | todo |

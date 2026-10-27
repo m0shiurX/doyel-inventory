@@ -1,0 +1,64 @@
+name: doyel
+
+services:
+  legacy-db:
+    image: mysql:5.7
+    platform: linux/amd64
+    profiles: [legacy]
+    environment:
+      MYSQL_ROOT_PASSWORD: doyel-local
+      MYSQL_ROOT_HOST: '%'
+    command:
+      - --sql-mode=NO_ENGINE_SUBSTITUTION
+      - --character-set-server=utf8
+      - --collation-server=utf8_unicode_ci
+    ports:
+      - '127.0.0.1:33057:3306'
+    volumes:
+      - legacy-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD-SHELL', 'MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysqladmin ping -h 127.0.0.1 -uroot --silent']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  legacy-web:
+    build: ./legacy
+    platform: linux/amd64
+    profiles: [legacy]
+    environment:
+      DOYEL_DB_HOST: legacy-db
+      DOYEL_DB_PORT: '3306'
+      DOYEL_DB_USER: root
+      DOYEL_DB_PASS: doyel-local
+      DOYEL_DB_NAME: software
+    ports:
+      - '127.0.0.1:8056:80'
+    volumes:
+      - '${LEGACY_SRC:-..}:/var/www/html:ro'
+    depends_on:
+      legacy-db:
+        condition: service_healthy
+
+  modern-db:
+    image: mysql:8.4
+    profiles: [modern]
+    environment:
+      MYSQL_ROOT_PASSWORD: doyel-local
+      MYSQL_ROOT_HOST: '%'
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - '127.0.0.1:33084:3306'
+    volumes:
+      - modern-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD-SHELL', 'MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysqladmin ping -h 127.0.0.1 -uroot --silent']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+volumes:
+  legacy-data:
+  modern-data:
