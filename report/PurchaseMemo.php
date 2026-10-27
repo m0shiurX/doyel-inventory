@@ -1,4 +1,9 @@
-<?php session_start() ?>
+<?php
+require __DIR__ . '/../lib/bootstrap.php';
+require_login();
+$id = is_scalar($_GET['id'] ?? null) ? (string)$_GET['id'] : '';
+$SalesID = ctype_digit($id) ? (int)$id : 0;
+?>
 
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
@@ -10,11 +15,7 @@
 <div class="printb"">
   <a href="#" onClick="javascript:window.print()">Print</a>
 </div>
-<?php include("menu.php");
-include '../connect.php';
-
- $FormDate= $_SESSION['form_date'];
- $ToDate=$_SESSION['to_date'];
+<?php include 'menu.php';
 
 echo '<h1 align="center">Sales Memo</h1>';
 
@@ -27,25 +28,14 @@ echo '<table width="100%" border="0" cellspacing="0" cellpadding="1" class="tabl
               echo '<th width="15%">Amount</th>';
             echo '</tr>';
 
-$SalesID=$_GET['id'];
-        $qry=mysql_query("SELECT canteen_item.ItemID, canteen_item.ItemName, canteen_sales_detail.*
-        FROM canteen_sales_detail INNER JOIN canteen_item
-        ON canteen_item.ItemID = canteen_sales_detail.ItemID
-        WHERE canteen_sales_detail.SalesID='$SalesID'") ;
-while ($Detail = mysql_fetch_object($qry)){
-
-if($bgcolor=='#ffffff'){$bgcolor='#f1f1f1';}
-        else{$bgcolor='#ffffff';}
-		print "<tr bgcolor=$bgcolor>" ;
-                print "<td>$Detail->ItemID</td>\n";
-	        print "<td>$Detail->ItemName</td>\n";
-		print "<td>$Detail->Qnty</td>\n";
-		print "<td>$Detail->Amt</td>\n";
-		print "</tr>\n";
-
+// Despite its filename this legacy page displays sale lines; preserve that contract.
+$bgcolor = '';
+foreach (db_all('SELECT i.ItemID, i.ItemName, d.Qnty, d.Amt FROM canteen_sales_detail d INNER JOIN canteen_item i ON i.ItemID = d.ItemID WHERE d.SalesID = ? ORDER BY d.ID', [$SalesID]) as $Detail) {
+    $bgcolor = $bgcolor === '#ffffff' ? '#f1f1f1' : '#ffffff';
+    echo '<tr bgcolor="' . e($bgcolor) . '"><td>' . e($Detail->ItemID) . '</td><td>' . e($Detail->ItemName) . '</td><td>' . e($Detail->Qnty) . '</td><td>' . e($Detail->Amt) . '</td></tr>';
 }
 echo "</table>";
- 
+
 ?>
 </div>
     </body>

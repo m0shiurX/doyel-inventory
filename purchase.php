@@ -1,4 +1,74 @@
-<?php session_start() ?>
+<?php
+require __DIR__ . '/lib/bootstrap.php';
+require_login();
+function purchase_input(array $input, string $key): string {
+    return is_scalar($input[$key] ?? null) ? (string)$input[$key] : '';
+}
+function purchase_number(array $input, string $key): float {
+    $value = purchase_input($input, $key);
+    return is_numeric($value) && is_finite((float)$value) ? (float)$value : 0;
+}
+$BillNo = purchase_input($_POST, 'bill_no') ?: purchase_input($_GET, 'Bill');
+$BillNo = ctype_digit($BillNo) && (int)$BillNo > 0 ? (int)$BillNo : '';
+$UserName = current_user();
+if (purchase_input($_GET, 'NBill') === 'add_new') {
+    $BillNo = db_tx(function () use ($UserName) {
+        // Serialize this user's open-bill lookup without guessing the last ID.
+        db_all('SELECT user_id FROM l_user WHERE UserName = ? ORDER BY user_id FOR UPDATE', [$UserName]);
+        $today = date('Y-m-d');
+        $bill = db_one("SELECT BillNo FROM canteen_purchase WHERE UserName = ? AND PR = ? AND Post = ? AND Date >= ? AND Date < ? + INTERVAL 1 DAY ORDER BY BillNo LIMIT 1 FOR UPDATE", [$UserName, '', 0, $today, $today]);
+        if ($bill !== null) return (int)$bill->BillNo;
+        db_exec('INSERT INTO canteen_purchase (PR, UserName, Supplier, Amount, Discount, Total, Date, Post) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', ['', $UserName, '', 0, 0, 0, now_sql(), 0]);
+        return (int)db_insert_id();
+    });
+}
+if ($BillNo !== '' && purchase_input($_GET, 'hPost') !== '') {
+    db_tx(function () use ($BillNo) {
+        $bill = db_one('SELECT BillNo, Post FROM canteen_purchase WHERE BillNo = ? FOR UPDATE', [$BillNo]);
+        if ($bill === null || (int)$bill->Post !== 0) return;
+        $amount = db_value('SELECT COALESCE(SUM(Amt), 0) FROM canteen_purchase_detail WHERE BillNo = ?', [$BillNo]);
+        $discount = purchase_number($_GET, 'discount');
+        // The entered discount is allowed; readonly amount/total are not trusted.
+        db_exec('UPDATE canteen_purchase SET Supplier = ?, Amount = ?, Discount = ?, Total = ?, Post = ? WHERE BillNo = ? AND Post = ?', [mb_substr(purchase_input($_GET, 'supplier'), 0, 80, 'UTF-8'), $amount, $discount, (float)$amount - $discount, 1, $BillNo, 0]);
+    });
+}
+if ($BillNo !== '' && purchase_input($_POST, 'Item') !== '' && purchase_number($_POST, 'qnty') != 0) {
+    $quantity = abs(purchase_number($_POST, 'qnty'));
+    $rate = purchase_number($_POST, 'rate');
+    $itemId = purchase_input($_POST, 'ItemID');
+    if (ctype_digit($itemId) && (int)$itemId > 0) db_tx(function () use ($BillNo, $quantity, $rate, $itemId) {
+        $bill = db_one('SELECT BillNo, Post FROM canteen_purchase WHERE BillNo = ? FOR UPDATE', [$BillNo]);
+        if ($bill === null || (int)$bill->Post !== 0) return;
+        $item = db_one('SELECT ItemID FROM canteen_item WHERE ItemID = ? FOR UPDATE', [$itemId]);
+        if ($item === null || !is_finite($quantity * $rate)) return;
+        db_exec('INSERT INTO canteen_purchase_detail (BillNo, Date, ItemID, Qnty, Rate, Amt) VALUES (?, ?, ?, ?, ?, ?)', [$BillNo, now_sql(), $itemId, $quantity, $rate, abs($quantity * $rate)]);
+        db_exec('UPDATE canteen_item SET Qnty = Qnty + ?, PurPrice = ? WHERE ItemID = ?', [$quantity, $rate, $itemId]);
+        db_exec('UPDATE canteen_purchase SET PR = ? WHERE BillNo = ?', ['S', $BillNo]);
+    });
+}
+$detailId = purchase_input($_GET, 'id');
+if ($BillNo !== '' && ctype_digit($detailId) && (int)$detailId > 0) {
+    db_tx(function () use ($BillNo, $detailId) {
+        $bill = db_one('SELECT BillNo, Post FROM canteen_purchase WHERE BillNo = ? FOR UPDATE', [$BillNo]);
+        if ($bill === null || (int)$bill->Post !== 0) return;
+        $detail = db_one('SELECT ID, ItemID, Qnty FROM canteen_purchase_detail WHERE ID = ? AND BillNo = ? FOR UPDATE', [$detailId, $BillNo]);
+        if ($detail === null) return;
+        $item = db_one('SELECT ItemID FROM canteen_item WHERE ItemID = ? FOR UPDATE', [$detail->ItemID]);
+        if ($item === null) throw new RuntimeException('The purchase stock item no longer exists.');
+        // Restore stored quantities only; URL ItemID/qnty cannot alter stock.
+        db_exec('UPDATE canteen_item SET Qnty = Qnty - ? WHERE ItemID = ?', [$detail->Qnty, $detail->ItemID]);
+        db_exec('DELETE FROM canteen_purchase_detail WHERE ID = ? AND BillNo = ?', [$detailId, $BillNo]);
+    });
+}
+$BillInfo = $BillNo !== '' ? db_one('SELECT UserName, Supplier, Date, Discount, Post FROM canteen_purchase WHERE BillNo = ?', [$BillNo]) : null;
+$Post = $BillInfo !== null ? ((int)$BillInfo->Post === 1 ? 'Posted' : 'UnPosted') : '';
+$Disc = $BillInfo->Discount ?? 0;
+$Supplier = $BillInfo->Supplier ?? '';
+$details = $BillNo !== '' ? db_all('SELECT i.ItemID, i.ItemName, d.ID, d.Qnty, d.Amt FROM canteen_purchase_detail d INNER JOIN canteen_item i ON i.ItemID = d.ItemID WHERE d.BillNo = ? ORDER BY d.ID', [$BillNo]) : [];
+$Sum = $BillNo !== '' ? (float)(db_value('SELECT SUM(Amt) FROM canteen_purchase_detail WHERE BillNo = ?', [$BillNo]) ?? 0) : 0;
+// Preserve the legacy gross-total display; stored header total includes discount.
+$TotalAmount = $Sum;
+?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
@@ -13,27 +83,27 @@
 <script type="text/javascript">var L="bnw2";</script>
 
 <script type="text/javascript">
-    
+
         window.onload = function()
-        {                
+        {
             var bComplete = new BComplete("Item",50);
             bComplete.loadData("dictionary/PurItem.php")
             var bComplete = new BComplete("supplier",50);
             bComplete.loadData("dictionary/supplier.php")
             document.dm.Item.focus() // Oftional supplier
         };
-    </script> 
+    </script>
 <script type="text/javascript">
   shortcut.add("alt+a", function() {
   window.location="purchase.php?NBill=add_new";
-      });   
-      shortcut.add("alt+p", function() {
-  	document.forms["form2"].submit();
       });
-  	shortcut.add("alt+m", function() {
+      shortcut.add("alt+p", function() {
+    document.forms["form2"].submit();
+      });
+    shortcut.add("alt+m", function() {
       return bill();
-      }); 
-  	
+      });
+
   function setfocus1(x)
   {
   switch (x)
@@ -53,33 +123,33 @@
     default:
     document.dm.Item.focus();
   }
-  	
-  }	
+
+  }
 
   function bill()
   { //alert('This Bill Posted');
       var sid=document.dm.bill_no.value;
-      //window.location="Report/SalesMemo.php?id="+Pid;
-      window.open("Report/PurMemo.php?id="+ sid+"","Ratting","width=750,height=700,0,status=0,scrollbars=1");
+      //window.location="report/SalesMemo.php?id="+Pid;
+      window.open("report/PurMemo.php?id="+ sid+"","Ratting","width=750,height=700,0,status=0,scrollbars=1");
   }
-  	
+
   function submitformPost()
   {
   document.form2.supplier.value=document.dm.supplier.value;
           if(document.form2.Posted.value=='Posted')
-  		{
-  		alert('This Bill Posted');
-  		return false;
-  		}
+        {
+        alert('This Bill Posted');
+        return false;
+        }
 
           else if(document.form2.supplier.value=='')
-  		{
-  		alert('Please Fill in Supplier Name');
-  		return false;
-  		}
+        {
+        alert('Please Fill in Supplier Name');
+        return false;
+        }
          else{document.forms["form2"].submit();}
-      
-  }	
+
+  }
   function addPost()
   {
       document.forms["dm"].submit();
@@ -122,82 +192,13 @@
 <?php include("menu.php"); ?>
 <h2>Stock Management Area</h2>
 <?php
-$BillNo="";
-$Post="";
-$Disc="";
-$Supplier="";
-$TotalAmount="";
-include 'connect.php';
-$UserName=$_SESSION['Username'];
-date_default_timezone_set('Asia/Dacca');
-$date = date("Y-m-d, H-i-s");
-$date2 = date("Y-m-d");
-
-//Adding_new_bill
-if(!empty($_GET['NBill'])){
-if ($_GET['NBill']=="add_new"){
-$check = mysql_query("SELECT * FROM canteen_purchase WHERE UserName = '$UserName' AND PR = '' AND Post = '0' AND Date LIKE '$date2%' LIMIT 1");
-if (mysql_num_rows($check) == 1){
-while ($Bill1 = mysql_fetch_object($check)){ $BillNo=$Bill1->BillNo;}
-                                }
-        else {
-            mysql_query("INSERT INTO `canteen_purchase`(`UserName` , `Date`)VALUES('$UserName','$date')");
-
-            $Bill=mysql_query("SELECT * FROM canteen_purchase WHERE UserName='$UserName' ORDER BY BillNo desc LIMIT 1") ;
-            while ($Bill1 = mysql_fetch_object($Bill)){ $BillNo=$Bill1->BillNo;  }
-            }
-                            }
-}
-// Find Bill
-
-if (!empty($_GET['Bill'])){
-    $BillNo = $_GET['Bill'];}
-    
-if (!empty($_POST['bill_no'])){
- $BillNo = $_POST['bill_no'];
-}
-
-//Posting_new_bill
-if (!empty($_GET['hPost'])){
-$Supplier = $_GET['supplier'];
-$Amount = $_GET['amount2'];
-$Discount = $_GET['discount'];
-$Total = $_GET['total'];
-mysql_query("UPDATE canteen_purchase SET Supplier='$Supplier' , Amount='$Amount' , Discount = '$Discount' , Total = '$Total' , Post = '1' WHERE BillNo='$BillNo' && Post='0'");
-
-}
-
-// Bill Information #########################
-
-if (isset($BillNo)) {
-    $check = mysql_query("SELECT * FROM canteen_purchase WHERE BillNo = '$BillNo'");
-    if(mysql_num_rows($check) == 1)
-{
-
-$sql=mysql_query("SELECT * FROM canteen_purchase WHERE BillNo='$BillNo'") ;
-while ($BillInfo = mysql_fetch_object($sql)){
-$User=$BillInfo->UserName;
-$Supplier=$BillInfo->Supplier;
-$BillDate= date_create($BillInfo->Date);
-$Disc=$BillInfo->Discount;
-$TotalAmount=$BillInfo->Amount - $Disc;
-if ($BillInfo->Post==1)
-{$Post="Posted";}
-else {
-    $Post="UnPosted";
-     }
-}
-	echo '<div class="table1">';
-	echo "User Name : $User";
-	echo "&nbsp;&nbsp;&nbsp;&nbsp;Date :";
-	print date_format($BillDate, 'd-M-Y, h:i:s A');
-  echo "&nbsp;&nbsp;&nbsp;&nbsp;";
-  echo "<b>$Post</b>";
-	echo "</div>";
-}
-else {echo "Bill No. Not Found";}
-}
-        ?>
+if ($BillInfo !== null) {
+    $BillDate = date_create($BillInfo->Date);
+    echo '<div class="table1">User Name : ' . e($BillInfo->UserName);
+    echo '&nbsp;&nbsp;&nbsp;&nbsp;Date :' . e($BillDate ? date_format($BillDate, 'd-M-Y, h:i:s A') : '');
+    echo '&nbsp;&nbsp;&nbsp;&nbsp;<b>' . e($Post) . '</b></div>';
+} else { echo 'Bill No. Not Found'; }
+?>
 
 <fieldset>
 <legend>Add to Stock</legend>
@@ -207,7 +208,7 @@ else {echo "Bill No. Not Found";}
       <td><table width="100%" border="0" cellspacing="1" cellpadding="1" >
         <tr>
           <td width="14%" height="32"><strong>Bill NO </strong></td>
-          <td width="36%"><input name="bill_no" type="text" id="bill_no" value="<?php echo $BillNo; ?>" readonly></td>
+          <td width="36%"><input name="bill_no" type="text" id="bill_no" value="<?= e($BillNo) ?>" readonly></td>
           <td width="20%"><strong>Rate</strong></td>
           <td width="30%"><input name="rate" type="text" id="rate" value="0" onKeyUp="if(event.keyCode==13) setfocus1(this.name);" onClick="showPrice(Item.value, 'Pur')" >
             <input name="ItemID" type="hidden" id="ItemID"></td>
@@ -220,7 +221,7 @@ else {echo "Bill No. Not Found";}
         </tr>
         <tr>
           <td><strong>Item</strong></td>
-          <td><input onKeyDown="return dn(event);" onKeyUp="if(event.keyCode==13) showPrice(this.value, 'Pur') & setfocus1(this.name);" type="text" id="Item" name="Item" size="32" style="font-size: 14pt">		  </td>
+          <td><input onKeyDown="return dn(event);" onKeyUp="if(event.keyCode==13) showPrice(this.value, 'Pur') & setfocus1(this.name);" type="text" id="Item" name="Item" size="32" style="font-size: 14pt">          </td>
           <td><label><strong>Amount</strong></label></td>
           <td><input name="amount" type="text" id="amount" readonly></td>
         </tr>
@@ -230,88 +231,24 @@ else {echo "Bill No. Not Found";}
           <td><input onClick="addPost();" type="button" name="Button" value="   ADD   "></td>
           <td>&nbsp;</td>
         </tr>
-        
+
       </table></td>
     </tr>
     <tr>
       <td>
-          
+
 <?php
-
-//Add_Item
-
-if (!empty($_POST['bill_no']) && !empty($_POST['Item']) && ($_POST['qnty']) != 0 && $Post=="UnPosted")
-    {
-$ItemID = $_POST['ItemID'];
-$ItemName = $_POST['Item'];
-$Qnty =abs($_POST['qnty']);
-$PurRate = $_POST['rate'];
-$Rate = $_POST['rate'];
-$Amount = abs($_POST['amount']);
-
-$qa = mysql_query("SELECT Qnty FROM canteen_item WHERE ItemID='$ItemID'");
-while ($q=mysql_fetch_object($qa)){ $TQnty=$q->Qnty; }
-
-$TQnty = $TQnty + $Qnty;
-
-mysql_query("INSERT INTO `canteen_purchase_detail`( `BillNo` , `Date` , `ItemID` , `Qnty` , `Rate` , `Amt`)
-        VALUES( '$BillNo','$date','$ItemID','$Qnty','$Rate','$Amount')");
-    
-mysql_query("UPDATE canteen_item SET Qnty='$TQnty' , PurPrice = '$Rate' WHERE ItemID='$ItemID'");
-mysql_query("UPDATE canteen_purchase SET PR ='S' WHERE BillNo='$BillNo'");
-    }
-
-//Remove_Item
-
-if (!empty($_GET['id']) && !empty($_GET['qnty']) && $Post=="UnPosted")
-    {
-      $ItemID = $_GET['ItemID'];
-      $DetailID = $_GET['id'];
-      $Qnty = $_GET['qnty'];
-      $qa = mysql_query("SELECT Qnty FROM canteen_item WHERE ItemID='$ItemID'");
-      while ($q=mysql_fetch_object($qa)){ $TQnty=$q->Qnty; }
-      $TQnty = $TQnty-$Qnty;
-      mysql_query("DELETE FROM canteen_purchase_detail WHERE ID='$DetailID'");
-      mysql_query("UPDATE canteen_item SET Qnty='$TQnty' WHERE ItemID='$ItemID'");
-      // header ('location:purchase.php?Bill='.$BillNo.'');
-    }
-
-
-// View Grid
 echo '<table width="100%" border="0" cellspacing="1" cellpadding="1" class="table1" id="tableGd">';
-              echo '<tr bgcolor="#f1f1f1">';
-              echo '<td width="10%"><b>Item ID</b></td>';
-              echo '<td width="40%"><b>Item Name</b></td>';
-              echo '<td width="15%"><b>Qnty</b></td>';
-              echo '<td width="15%"><b>Amount</b></td>';
-              echo '<td width="20%"><b>Delete</b></td>';
-            echo '</tr>';
-
-$qry=mysql_query("SELECT canteen_item.ItemID, canteen_item.ItemName, canteen_purchase_detail.*
-        FROM canteen_purchase_detail INNER JOIN canteen_item
-        ON canteen_item.ItemID = canteen_purchase_detail.ItemID
-        WHERE canteen_purchase_detail.BillNo='$BillNo'") ;
-            
-while ($Detail = mysql_fetch_object($qry)){
-
-		print "<tr>" ;
-                print "<td>$Detail->ItemID</td>\n";
-	        print "<td>$Detail->ItemName</td>\n";
-		print "<td>$Detail->Qnty</td>\n";
-		print "<td>$Detail->Amt</td>\n";
-		print "<td><a href=\"purchase.php?Bill=$BillNo&ItemID=$Detail->ItemID&qnty=$Detail->Qnty&id=$Detail->ID\"> Delete </a></td></tr>\n";
-
+echo '<tr><td width="10%"><b>Item ID</b></td><td width="40%"><b>Item Name</b></td><td width="15%"><b>Qnty</b></td><td width="15%"><b>Amount</b></td><td width="20%"><b>Delete</b></td></tr>';
+foreach ($details as $Detail) {
+    echo '<tr><td>' . e($Detail->ItemID) . '</td> <td>' . e($Detail->ItemName) . '</td> <td>' . e($Detail->Qnty) . '</td> <td>' . e($Detail->Amt) . '</td> ';
+    $removeUrl = 'purchase.php?' . http_build_query(['Bill' => $BillNo, 'ItemID' => $Detail->ItemID, 'qnty' => $Detail->Qnty, 'id' => $Detail->ID]);
+    echo '<td><a href="' . e($removeUrl) . '"> Delete </a></td> </tr>';
 }
-echo "</table>";
-
-// Count Of Total Amount
-$Total = mysql_query("SELECT SUM(Amt) as 'Sum' FROM `canteen_purchase_detail` WHERE BillNo='$BillNo'");
-$Sum=mysql_fetch_object($Total);
-$Sum=$Sum->Sum;
-if($Post='UnPosted"'){ $TotalAmount= $Sum; }
+echo '</table>';
 ?>
-         
-	  </td>
+
+      </td>
     </tr>
   </table>
 </form>
@@ -320,31 +257,31 @@ if($Post='UnPosted"'){ $TotalAmount= $Sum; }
 <table width="100%" border="0" cellspacing="1" cellpadding="1" style="font-size: 14pt">
 <tr bgcolor="#f1f1f1">
     <td><a class="battun" href="purchase.php?NBill=add_new" title="Alt+A"> Add New </a>
-	<a class="battun" onClick="bill();" title="Alt+M" href="#"> Bill </a></td>
-              
-              <td>Amount :              
-              <input name="amount2" type="text" size="10" readonly value = "<?php echo  round($Sum, 2);  ?>" style="font-size: 14pt"></td>
-              <td>Discount : 
-              <input name="discount" type="text" size="10" onKeyUp ="TotalAmount(this.value)" value="<?php echo  round($Disc, 2) ; ?>" style="font-size: 14pt"></td>
+    <a class="battun" onClick="bill();" title="Alt+M" href="#"> Bill </a></td>
+
+              <td>Amount :
+              <input name="amount2" type="text" size="10" readonly value = "<?= e(round($Sum, 2)) ?>" style="font-size: 14pt"></td>
+              <td>Discount :
+              <input name="discount" type="text" size="10" onKeyUp ="TotalAmount(this.value)" value="<?= e(round((float)$Disc, 2)) ?>" style="font-size: 14pt"></td>
               <td></td>
-              <td>Total : <input name="total" type="text" size="10" readonly value = "<?php echo round($TotalAmount, 2) ; ?>" style="font-size: 14pt"></td>
-              <td><input name="Bill" type="hidden" id="Bill" value="<?php echo $BillNo ; ?>">
-                <input name="Posted" type="hidden" id="Posted" value="<?php echo $Post ; ?>">
+              <td>Total : <input name="total" type="text" size="10" readonly value = "<?= e(round($TotalAmount, 2)) ?>" style="font-size: 14pt"></td>
+              <td><input name="Bill" type="hidden" id="Bill" value="<?= e($BillNo) ?>">
+                <input name="Posted" type="hidden" id="Posted" value="<?= e($Post) ?>">
                 <input name="supplier" type="hidden" id="supplier" value="">
                 <input name="hPost" type="hidden" id="hPost" value="YES">
                 <input title="Alt+P" onClick="submitformPost()" type="button" name="Post" value="  Post  " style="font-size: 14pt"></td>
 </tr>
 </table>
-</form> 
+</form>
 
 
 <form name="find" method="get" id="form1" action="">
 <table width="100%" border="0" cellspacing="1" cellpadding="1">
   <tr>
     <td width="25%">
-      <a href="purchase.php?Bill=<?php echo $b=$BillNo-1 ; ?>">Pre</a>
-    <input name="Bill" type="text" id="Bill" value="<?php echo $BillNo ; ?>" size="15">
-    <a href="purchase.php?Bill=<?php echo $b=$BillNo+1 ; ?>">Next</a></td>
+      <a href="purchase.php?Bill=<?= e((int)$BillNo - 1) ?>">Pre</a>
+    <input name="Bill" type="text" id="Bill" value="<?= e($BillNo) ?>" size="15">
+    <a href="purchase.php?Bill=<?= e((int)$BillNo + 1) ?>">Next</a></td>
     <td width="69%"><input name="Find" type="submit" id="Find" value="  Find  "></td>
     <td width="6%">&nbsp;</td>
   </tr>

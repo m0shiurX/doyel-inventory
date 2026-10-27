@@ -1,22 +1,5 @@
 <?php
-        
-include '../connect.php';
-
-
-echo "[";	
-$sql="SELECT SupplierName FROM canteen_supplier WHERE D = '0'";
-
-$rs=mysql_query($sql, $conn) or die (mysql_error());    //Get Result set
-
-//Do we Have Results?
-if(mysql_num_rows($rs) > 0){
-    //print "You Have Row?";
-   while ($row=mysql_fetch_object($rs)){
-       print '"'.$row->SupplierName.'", ';
-
-   }
-   }else{
-print "Sorry, No Result Found";
-}
-echo "]";		
-?>
+require __DIR__ . '/../lib/bootstrap.php';
+require_login_json();
+header('Content-Type: application/json; charset=UTF-8');
+echo json_encode(array_column(db_all('SELECT SupplierName FROM canteen_supplier WHERE D = ? ORDER BY SupplierId', [0]), 'SupplierName'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE);

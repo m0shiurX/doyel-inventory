@@ -27,3 +27,5 @@ Private source dumps, Phase 0 golden outputs and history recovery now also exist
 - S2.10: inspect username length consistency before accepting new users. Business tables use 30-character usernames; user creation must not create identities that strict-mode bill/cash writes cannot store.
 - S4.3/S4.5: verify exception logs cannot be downloaded through the web server; prefer a private configurable location outside the public document root if server-specific rules cannot reliably protect `logs/`.
 - S3.3: after stock becomes DECIMAL, exercise fractional sale/add/remove and bill reversal; Phase 2 intentionally retains the old integer stock column until that migration.
+
+- S3.3: enforce the selected numeric scale before related writes (quantity before stock/detail arithmetic; money discounts before header totals), so schema rounding cannot make stored detail quantities disagree with stock or stored discounts disagree with totals. Include boundary precision checks as well as ordinary fractional quantities.

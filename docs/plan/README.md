@@ -91,7 +91,7 @@ Phase 2 can start as soon as Phase 0 is merged. It doesn't wait for Phase 1.
 | S2.1 | Foundation (`lib/`) + exemplar page | merged |
 | S2.2 | Auth and users | merged |
 | S2.3 | Sales flow | merged |
-| S2.4 | Purchase and suppliers | todo |
+| S2.4 | Purchase and suppliers | merged |
 | S2.5 | Items and customers | todo |
 | S2.6 | Cash, payments, accounts | todo |
 | S2.7 | Admin and stock snapshots | merged |
