@@ -13,12 +13,13 @@
 ## S4.1 POST + CSRF for destructive actions
 
 **Depends on:** Phase 2 merged (Phase 3 not required)
-**Owns:** `lib/csrf.php` (new), the action handlers and the links/forms that trigger them in `Unpost.php`, `Sales.php`, `purchase.php`, `remove_payment.php`, `Payment.php`, `CashCollection.php`, `Expenses.php`, `SavePrestntStock.php`, and its trigger in `Report.php`
+**Owns:** `lib/csrf.php` (new), the action handlers and the links/forms that trigger them in `Unpost.php`, `Sales.php`, `purchase.php`, `remove_payment.php`, `Payment.php`, `CashCollection.php`, `Expenses.php`, `SavePrestntStock.php`, and its trigger in `Report.php`; `tools/perf.php` (snapshot request only)
 **Resolves:** S6
 
 - `csrf_token()` stores one token per session. `csrf_field()` prints the hidden input. `require_csrf()` checks `hash_equals` and responds 403.
 - Every delete, unpost, post or remove action becomes a small `<form method="post">` with a button styled like the old link, plus `require_csrf()` in the handler. GET requests to those handlers do nothing.
 - Include the cash collection and expense `?d=` deletes, sales/purchase `NBill=add_new` bill creation, and stock-snapshot creation in the POST/CSRF conversion. The stock snapshot remains available to the same authenticated roles as before. GET may show a confirmation form but must never create a snapshot.
+- Update the one-shot stock-snapshot performance request to use the authenticated CSRF form, keeping it a single measured write.
 - Add a JS `confirm()` on delete buttons.
 - Update scenarios 1, 3, 4, 5, 7 and 8 so they post the forms the new way. This is the only `tools/scenarios/` edit allowed, and the DB results must be unchanged.
 
