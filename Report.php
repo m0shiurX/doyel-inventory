@@ -105,11 +105,6 @@ $ToTime='23:59:59';
 		<li><a href="Report/closingBalance.php" target="_blank">Closing Balance</a></li>
 <!-- 		<li><a href="Report/UnpostedBill.php" target="_blank">Unposted Bills</a></li> -->
 	  </ul>
-    <!--<p>
-      <a href="javascript:void(0);"onClick=window.open("updateClosingBalance.php","Ratting","width=450,height=300,0,status=0,");>Update Closing Balance</a>
-      <a href="javascript:void(0);"onClick=window.open("report/updateClosingBalance.php");>Saved Closing Balance</a>
-      </p>
-	-->
 	</div>
 		
 		<div style="width:48%; float:right" class="report">

@@ -1,0 +1,18 @@
+# Private client data and generated backups.
+*.sql
+*.sql.zip
+*.sql.gz
+# Migration and cleanup SQL are source code, not private dumps.
+!/db/migrations/**/*.sql
+!/db/cleanup/**/*.sql
+/unsused_Backups/myBackups/
+/.fixtures/
+
+# Regenerable local graph cache.
+/graft/
+
+# Host and local runtime files.
+.DS_Store
+Thumbs.db
+/config.local.php
+/logs/
