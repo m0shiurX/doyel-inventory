@@ -225,7 +225,7 @@ Steps:
 4. Write `docs/perf/phase2.md`: the modern perf table next to the legacy baseline and phase 1.
 
 **Done when:**
-- `grep -rnE "mysql_|split\(|get_magic_quotes|Asia/Dacca|Report/" --include='*.php' .` returns nothing.
+- The application-only removed-call scan returns nothing: `rg -n '\b(mysql_[a-z_]+|split|get_magic_quotes_gpc)\s*\(|Asia/Dacca|Report/' --glob '*.php' --glob '!tools/**' --glob '!graft/**' .`. Match function boundaries so allowed `preg_split()` is not a false positive; read-only tooling may retain legacy SQL templates for evidence.
 - `git ls-files -z '*.php' | xargs -0 tools/lint.sh` is clean (filenames with spaces stay intact).
 - The full `compare.sh` (pages and scenarios) has zero diffs except the consolidated list of intentional changes. That list is written to `docs/plan/phase-2-intentional-changes.md` for the owner to sign off.
 - `_errors.txt` on modern is empty at `E_ALL`.

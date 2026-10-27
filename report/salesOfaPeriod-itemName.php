@@ -1,70 +1,36 @@
-<?php session_start() ?>
-
+<?php
+require __DIR__ . '/../lib/bootstrap.php';
+require_login();
+$FormDate = is_string($_SESSION['form_date'] ?? null) ? $_SESSION['form_date'] : date('Y-m-d') . ' 00:00:00';
+$ToDate = is_string($_SESSION['to_date'] ?? null) ? $_SESSION['to_date'] : date('Y-m-d') . ' 23:59:59';
+// ItemName is unique: catalogue name/price are constant within each legacy item group.
+$items = db_all('SELECT i.ItemID, i.ItemName, i.SalesPrice, SUM(d.Qnty) AS sQnty FROM canteen_sales h INNER JOIN canteen_sales_detail d ON h.SalesID = d.SalesID INNER JOIN canteen_item i ON i.ItemID = d.ItemID WHERE h.Post = ? AND d.Date BETWEEN ? AND ? GROUP BY i.ItemID, i.ItemName, i.SalesPrice ORDER BY i.ItemName', [1, $FormDate, $ToDate]);
+?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
-    <head>
-    <title>Sales of a period Item wise</title>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<html><head><title>Sales of a period Item wise</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <link rel="stylesheet" type="text/css" href="Report.css">
 <div id="main">
-<div class="printb"">
-	<a href="#" onClick="javascript:window.print()">Print</a>
-</div>
-<?php include("menu.php");
-include '../connect.php';
-
- $FormDate= $_SESSION['form_date'];
- $ToDate=$_SESSION['to_date'];
- ?>
+<div class="printb"><a href="#" onClick="javascript:window.print()">Print</a></div>
+<?php include __DIR__ . '/menu.php'; ?>
 <h1 align="center">Sales of a period</h1>
-<p align="left"><b>From:</b> <?php $fDate=date_create($FormDate); echo $fDate=date_format($fDate, 'd-M-Y'); ?>  &nbsp; 
-<b>To:</b> <?php $tDate=date_create($ToDate); echo $tDate=date_format($tDate, 'd-M-Y'); ?></p>
-<h2></h2>
-<table width="100%" border="0" cellspacing="0" cellpadding="1" class="table1"  id="tableGd">
-    <tr>
-          <th width="12%">SL</th>
-          <th width="48%">Item Name</th>
-          <th width="14%">Amount</th>
-          <th width="13%">Qunty</th>
-          <th width="13%">Total</th>
-	</tr>
+<p align="left"><b>From:</b> <?= e(date_format(date_create($FormDate), 'd-M-Y')) ?> &nbsp;
+<b>To:</b> <?= e(date_format(date_create($ToDate), 'd-M-Y')) ?></p>
+<h2></h2><table width="100%" border="0" cellspacing="0" cellpadding="1" class="table1" id="tableGd">
+<tr><th width="12%">SL</th><th width="48%">Item Name</th><th width="14%">Amount</th><th width="13%">Qunty</th><th width="13%">Total</th></tr>
 <?php
-$sl=0; $subTotal=""; $totalAmt="";
-$result=mysql_query("SELECT *, canteen_item.ItemType, SUM(canteen_sales_detail.Qnty) AS 'sQnty' FROM canteen_sales
-	INNER JOIN canteen_sales_detail ON canteen_sales.SalesID=canteen_sales_detail.SalesID 
-	INNER JOIN canteen_item ON canteen_sales_detail.ItemID=canteen_item.ItemID 
-	WHERE canteen_sales.Post='1' AND canteen_sales_detail.Date BETWEEN '$FormDate' AND '$ToDate' GROUP BY canteen_item.ItemName"
-);
-
-		if(mysql_num_rows($result) > 0){
-		while ($re=mysql_fetch_object($result)){
-
-		$sl++;
-		print "<tr>" ;
-		print "<td>$sl</td>\n";
-		print "<td>$re->ItemName</td>\n";
-		print "<td>$re->SalesPrice</td>\n";
-		print "<td>$re->sQnty</td>\n";
-		$tAmt=$re->sQnty*$re->SalesPrice;
-		$subTotal=$subTotal+$re->sQnty;
-		$totalAmt=$totalAmt+$tAmt;
-		print "<td>$tAmt</td>\n";
-		print "</tr>\n";
-		}
-		
-		print "<tr>
-              <th><b>&nbsp;</b></th>
-              <th><b>Sub Total</b></th>
-              <th align=\"left\"><b>&nbsp;</b></th>
-			  <th align=\"left\"><b>$subTotal</b></th>
-              <th align=\"left\"><b>$totalAmt</b></th>
-            </tr>";
+$sl = 0; $subTotal = 0; $totalAmt = 0;
+foreach ($items as $item) {
+    $amount = (float)$item->sQnty * (float)$item->SalesPrice;
+    echo '<tr><td>' . ++$sl . "</td>
+<td>" . e($item->ItemName) . "</td>
+<td>" . e($item->SalesPrice) . "</td>
+<td>" . e($item->sQnty) . "</td>
+<td>" . e($amount) . "</td>
+</tr>
+";
+    $subTotal += (float)$item->sQnty; $totalAmt += $amount;
 }
-
-
-?>
- </table>
+if ($items) echo '<tr><th><b>&nbsp;</b></th><th><b>Sub Total</b></th><th align="left"><b>&nbsp;</b></th><th align="left"><b>' . e($subTotal) . '</b></th><th align="left"><b>' . e($totalAmt) . '</b></th></tr>';
+?></table>
 <p>&nbsp;</p>
-</div>
-    </body>
-</html>
+</div></body></html>
