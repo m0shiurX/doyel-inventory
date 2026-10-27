@@ -5,6 +5,7 @@
 # Migration and cleanup SQL are source code, not private dumps.
 !/db/migrations/**/*.sql
 !/db/cleanup/**/*.sql
+!/tools/prod/*.sql
 /unsused_Backups/myBackups/
 /.fixtures/
 
