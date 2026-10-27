@@ -1,4 +1,7 @@
-<?php session_start() ?>
+<?php
+require __DIR__ . '/lib/bootstrap.php';
+require_login();
+?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
@@ -32,23 +35,16 @@
     <td width="35%"><b>Address</b></td>
   </tr>
 
-	<?php
-    include 'connect.php';
-    $sql="SELECT * FROM canteen_customar" ;
-    $rs=mysql_query($sql, $conn) or die (mysql_error());
-      if(mysql_num_rows($rs)>0){
-        while ($row=mysql_fetch_object($rs)){
-
-        print '<tr>' ;
-        print "<td>$row->MemberID</td>\n";
-        print "<td><a href=\"add_member.php?ID=$row->MemberID\">Edit</a></td>";
-        print "<td>$row->Nickname</td>\n";
-        print "<td id='MemberName'>$row->MemberName</td>\n";
-        print "<td>$row->mobile, $row->mobile2</td>\n";
-        print "<td>$row->address</td>\n";
-        }
-      }
-        ?>
+    <?php foreach (db_all('SELECT MemberID,Nickname,MemberName,mobile,mobile2,address FROM canteen_customar ORDER BY MemberID') as $row): ?>
+        <tr>
+            <td><?= e($row->MemberID) ?></td>
+            <td><a href="add_member.php?ID=<?= e(urlencode($row->MemberID)) ?>">Edit</a></td>
+            <td><?= e($row->Nickname) ?></td>
+            <td id="MemberName"><?= e($row->MemberName) ?></td>
+            <td><?= e($row->mobile . ', ' . $row->mobile2) ?></td>
+            <td><?= e($row->address) ?></td>
+        </tr>
+    <?php endforeach; ?>
 </table>
 </form>
   </div>
@@ -62,7 +58,7 @@
       grid = $('#userGrid');
 
       // handle search fields of members key up event
-      $('#MemberName').keyup(function(e) { 
+      $('#MemberName').keyup(function(e) {
         text = $(this).val(); // grab search term
 
         if(text.length > 1) {
@@ -75,11 +71,11 @@
               $(this).show(); // show matching row
           });
         }
-        else 
+        else
           grid.find('tr').show(); // if no matching name is found, show all rows
       });
-      
-    }); 
+
+    });
   </script>
     </body>
 </html>

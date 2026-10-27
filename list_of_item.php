@@ -1,4 +1,7 @@
-<?php session_start() ?>
+<?php
+require __DIR__ . '/lib/bootstrap.php';
+require_login();
+?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
@@ -6,11 +9,11 @@
 <link href="css/Style.css" rel="stylesheet" type="text/css">
 <link href="css/lessframework4.css" rel="stylesheet" type="text/css">
 <script type="text/javascript" src="codes/jquery-1.5.min.js"></script>
-		
+
     <div id="main">
 
 	<?php include("menu.php"); ?>
-	<h2>List of Item</h2> 
+	<h2>List of Item</h2>
 
 	<form name="form" method="post" action="">
 		<table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -25,7 +28,7 @@
 	<div  id="userGrid" class="scrollbar">
     <form id="grid_form_id">
 	<table width="100%" border="0" cellspacing="1" cellpadding="1" id="tableGd">
-	 	<tr>
+        <tr>
 			<th width="4%"><b>ID</b></th>
 			<th width="4%"><b>Edit</b></th>
 			<th width="20%"><b>Name of Item </b></th>
@@ -37,31 +40,24 @@
 			<th width="12%"><b>Sales Price</b></th>
 		</tr>
 
-		<?php include 'connect.php';
-      	$sql="SELECT * FROM canteen_item WHERE D='0' ORDER BY ItemID" ;
-		$rs=mysql_query($sql, $conn) or die (mysql_error());
-        if(mysql_num_rows($rs)>0){
-            while ($row=mysql_fetch_object($rs)){
-            	print "<tr id=\"$row->ItemID\">" ;
-		        print "<td  align='center'>$row->ItemID</td>\n";
-				print "<td><a href=\"add_item.php?ID=$row->ItemID\">Edit</a></td>";
-		        print "<td id='ItemName'>$row->ItemName</td>\n";
-				// print "<td align='center'>$row->SupplierName</td>\n";
-				print "<td align='center'>$row->Qnty</td>\n";
-				print "<td align='center'>$row->MinimumQuantity</td>\n";
-				print "<td align='center'>$row->MaximumQuantity</td>\n";
-				print "<td align='center'>$row->PurPrice</td>\n";
-				print "<td align='center'>$row->SalesPrice</td>\n";
-				print "</tr>\n";
-			}
-        }
-    	?>
+        <?php foreach (db_all('SELECT ItemID,ItemName,Qnty,MinimumQuantity,MaximumQuantity,PurPrice,SalesPrice FROM canteen_item WHERE D=? ORDER BY ItemID',[0]) as $row): ?>
+            <tr id="<?= e($row->ItemID) ?>">
+                <td align="center"><?= e($row->ItemID) ?></td>
+                <td><a href="add_item.php?ID=<?= e(urlencode($row->ItemID)) ?>">Edit</a></td>
+                <td id="ItemName"><?= e($row->ItemName) ?></td>
+                <td align="center"><?= e($row->Qnty) ?></td>
+                <td align="center"><?= e($row->MinimumQuantity) ?></td>
+                <td align="center"><?= e($row->MaximumQuantity) ?></td>
+                <td align="center"><?= e($row->PurPrice) ?></td>
+                <td align="center"><?= e($row->SalesPrice) ?></td>
+            </tr>
+        <?php endforeach; ?>
 	</table>
     </form>
 	</div>
 	<?php include 'footer.php'; ?>
 	</div>
-	
+
 
 
 <!-- For Searching Products -->
@@ -70,7 +66,7 @@
 		grid = $('#userGrid');
 
 		// handle search fields of products key up event
-		$('#ItemName').keyup(function(e) { 
+		$('#ItemName').keyup(function(e) {
 			text = $(this).val(); // grab search term
 
 			if(text.length > 1) {
@@ -83,11 +79,11 @@
 						$(this).show(); // show matching row
 				});
 			}
-			else 
+			else
 				grid.find('tr').show(); // if no matching name is found, show all rows
 		});
-		
-	});	
+
+	});
 </script>
 </body>
 </html>

@@ -1,75 +1,73 @@
-<?php session_start() ?>
+<?php
+require __DIR__ . '/lib/bootstrap.php';
+require_login();
+function item_text(string $key, int $length): string
+{
+    return mb_substr(is_string($_POST[$key] ?? null) ? $_POST[$key] : '', 0, $length, 'UTF-8');
+}
+function item_number(string $key): float
+{
+    $value = is_string($_POST[$key] ?? null) ? $_POST[$key] : '';
+    return is_numeric($value) && is_finite((float)$value) ? (float)$value : 0.0;
+}
+$ID = filter_var($_GET['ID'] ?? null, FILTER_VALIDATE_INT);
+$ID = $ID !== false && $ID > 0 ? $ID : 0;
+$ItemName = $PurPrice = $SalesPrice = $SupplierName = $getTotal = $MaximumQuantity = $MinimumQuantity = '';
+$GenericName = $ItemType = null;
+$ItemID = $ID;
+$Drop = null;
+$message = '';
+if (item_text('Item', 80) !== '') {
+    $ItemName = item_text('Item', 80);
+    $SupplierName = item_text('supplier', 80);
+    $GenericName = item_text('GenericName', 25);
+    $ItemType = item_text('ItemType', 2);
+    $PurPrice = item_number('PurPrice');
+    $SalesPrice = item_number('SalesPrice');
+    // Explicit stock edits retain their existing workflow; a disabled/omitted field cannot erase stock.
+    $hasStock = is_string($_POST['totalQnty'] ?? null);
+    $totalQnty = item_number('totalQnty');
+    $MaximumQuantity = item_number('MaximumQuantity');
+    $MinimumQuantity = item_number('MinimumQuantity');
+    $Drop = !empty($_GET['Drop']) ? item_number('Drop') : 0;
+    if ($ID > 0) {
+        if ($hasStock) {
+            db_exec('UPDATE canteen_item SET ItemName=?, PurPrice=?, SalesPrice=?, SupplierName=?, GenericName=?, ItemType=?, Qnty=?, MaximumQuantity=?, MinimumQuantity=? WHERE ItemID=?', [$ItemName,$PurPrice,$SalesPrice,$SupplierName,$GenericName,$ItemType,$totalQnty,$MaximumQuantity,$MinimumQuantity,$ID]);
+        } else {
+            db_exec('UPDATE canteen_item SET ItemName=?, PurPrice=?, SalesPrice=?, SupplierName=?, GenericName=?, ItemType=?, MaximumQuantity=?, MinimumQuantity=? WHERE ItemID=?', [$ItemName,$PurPrice,$SalesPrice,$SupplierName,$GenericName,$ItemType,$MaximumQuantity,$MinimumQuantity,$ID]);
+        }
+    } elseif (db_value('SELECT ItemID FROM canteen_item WHERE ItemName=?', [$ItemName]) === null) {
+        db_exec('INSERT INTO canteen_item (ItemName,PurPrice,SalesPrice,SupplierName,GenericName,ItemType,MaximumQuantity,MinimumQuantity,Qnty,D) VALUES (?,?,?,?,?,?,?,?,?,?)', [$ItemName,$PurPrice,$SalesPrice,$SupplierName,$GenericName,$ItemType,$MaximumQuantity,$MinimumQuantity,0,0]);
+        $message = 'You have successfully added an item';
+    } else $message = 'This Item exists ! Try a new one.';
+}
+if ($ID > 0) {
+    $item = db_one('SELECT ItemID,ItemName,PurPrice,SalesPrice,SupplierName,GenericName,ItemType,Qnty,MaximumQuantity,MinimumQuantity,D FROM canteen_item WHERE ItemID=?', [$ID]);
+    if ($item !== null) {
+        $ItemID=$item->ItemID; $ItemName=$item->ItemName; $PurPrice=$item->PurPrice; $SalesPrice=$item->SalesPrice;
+        $SupplierName=$item->SupplierName; $GenericName=$item->GenericName; $ItemType=$item->ItemType;
+        $getTotal=$item->Qnty; $MaximumQuantity=$item->MaximumQuantity; $MinimumQuantity=$item->MinimumQuantity; $Drop=$item->D;
+    }
+}
+?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
     <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <link href="css/Style.css" rel="stylesheet" type="text/css">
     <link href="css/lessframework4.css" rel="stylesheet" type="text/css">
-    <script type="text/javascript">    
+    <script type="text/javascript">
         window.onload = function()
-        {                
+        {
           var bComplete = new BComplete("supplier",10);
           bComplete.loadData("dictionary/supplier.php")
         };
-    </script>     
+    </script>
     <div align="center"><div id="main">
   <?php include("menu.php"); ?>
   <h2>Single Product </h2>
-<?php 
+<?php if ($message !== ''): ?><h2><?= e($message) ?></h2><?php endif; ?>
 
-$ItemName='';
-
-include 'connect.php';
-
-if (!empty($_POST['Item'])){
-  $ItemName=$_POST['Item'];
-  $SupplierName=$_POST['supplier'];
-  $GenericName=$_POST['GenericName'];
-  $ItemType=$_POST['ItemType'];
-  $PurPrice=$_POST['PurPrice'];
-  $SalesPrice=$_POST['SalesPrice'];
-  $totalQnty = $_POST['totalQnty'];
-  $MaximumQuantity=$_POST['MaximumQuantity'];
-  $MinimumQuantity=$_POST['MinimumQuantity'];
-  $Qnty=0;
-  if (!empty($_GET['Drop'])) {$Drop=$_POST['Drop'];}else{$Drop=0;}
-  if (!empty($_GET['ID'])) {
-    $ID=$_GET['ID'];
-    mysql_query("UPDATE canteen_item SET ItemName='$ItemName', PurPrice='$PurPrice', SalesPrice='$SalesPrice', SupplierName='$SupplierName', GenericName='$GenericName', ItemType='$ItemType', Qnty = '$totalQnty', MaximumQuantity='$MaximumQuantity', MinimumQuantity='$MinimumQuantity' WHERE ItemID = '$ID'" );
-  }else{
-    $check = mysql_query("SELECT ItemName FROM canteen_item WHERE ItemName = '$ItemName'");
-    if (mysql_num_rows($check) == 0){
-      $query = mysql_query("INSERT INTO canteen_item (ItemName, PurPrice, SalesPrice, SupplierName, GenericName, ItemType, MaximumQuantity, MinimumQuantity, Qnty) VALUES('$ItemName','$PurPrice','$SalesPrice','$SupplierName','$GenericName','$ItemType','$MaximumQuantity','$MinimumQuantity','$Qnty')");
-        if ($query)
-          { echo   "<h2>You have successfully added an item</h2>";
-        }else{  echo   "<h2>Sorry ! Operation failed.</h2>";   }
-    }else {
-        echo "<h2>This Item exists ! Try a new one.</h2>";
-    }
-  }
-}
-
-if (!empty($_GET['ID']))
-{
-  $ID=$_GET['ID'];
-  $mem=mysql_query("SELECT * FROM canteen_item WHERE ItemID = '$ID'");
-  while($Itemm=mysql_fetch_object($mem)){
-    $ItemID=$Itemm->ItemID;
-    $ItemName=$Itemm->ItemName;
-    $PurPrice=$Itemm->PurPrice;
-    $SalesPrice=$Itemm->SalesPrice;
-    $SupplierName=$Itemm->SupplierName;
-    $GenericName=$Itemm->GenericName;
-    $ItemType=$Itemm->ItemType;
-    $getTotal=$Itemm->Qnty;
-    $MaximumQuantity=$Itemm->MaximumQuantity;
-    $MinimumQuantity=$Itemm->MinimumQuantity;
-    $Drop=$Itemm->D;
-  }
-}
-
-mysql_close($conn);
-?>
 <fieldset>
   <legend>Adding/Updating an Item</legend>
   <form action="" method="post" enctype="multipart/form-data" name="add_book" id="add_book">
@@ -77,44 +75,39 @@ mysql_close($conn);
       <tr>
         <td>Item ID</td>
         <td width="65%">
-          <?php
-            if (!empty($_GET['ID'])){
-              echo "<input name=\"ItemID\" type=\"text\" id=\"ItemID\" readonly=\"YES\" value=\"$ItemID\">";
-              echo "&nbsp;&nbsp;&nbsp;&nbsp;Drop ";
-              if (isset($Drop)) { echo "<input type=\"checkbox\" name=\"Drop\" value=\"$Drop\"/>";}
-            }else {
-              echo "&nbsp;";
-              }
-          ?>
+          <?php if ($ID > 0): ?>
+              <input name="ItemID" type="text" id="ItemID" readonly="YES" value="<?= e($ItemID) ?>">&nbsp;&nbsp;&nbsp;&nbsp;Drop
+              <?php if ($Drop !== null): ?><input type="checkbox" name="Drop" value="<?= e($Drop) ?>"/><?php endif; ?>
+          <?php else: ?>&nbsp;<?php endif; ?>
         </td>
           <td>Available</td>
-          <td><input name="totalQnty" type="number" id="totalQnty" <?=(!empty($_GET['ID']) && $_SESSION['admin'] !='1')? "" : "disabled"?>  value="<?php if (isset($getTotal)) {print $getTotal;} ?>"></td>
+          <td><input name="totalQnty" type="number" id="totalQnty" <?= ($ID > 0 && !is_admin()) ? '' : 'disabled' ?>  value="<?= e($getTotal) ?>"></td>
       </tr>
       <tr>
         <td width="17%">Item Name</td>
-        <td width="27%"><input onKeyPress="return dg(event);" name="Item" type="text" id="Item" size="30" value="<?php if (isset($ItemName)) {print $ItemName;} ?>"></td>
+        <td width="27%"><input onKeyPress="return dg(event);" name="Item" type="text" id="Item" size="30" value="<?= e($ItemName) ?>"></td>
         <td width="11%">Pur Price</td>
-        <td width="19%"><input name="PurPrice" type="text" id="PurPrice" value="<?php if (isset($PurPrice)) {print $PurPrice;} ?>"></td>
+        <td width="19%"><input name="PurPrice" type="text" id="PurPrice" value="<?= e($PurPrice) ?>"></td>
         <td width="26%">Min</td>
-        <td width="19%"><input name="MinimumQuantity" type="text" id="MinimumQuantity" value="<?php if (isset($MinimumQuantity)) {print $MinimumQuantity;} ?>"></td>
+        <td width="19%"><input name="MinimumQuantity" type="text" id="MinimumQuantity" value="<?= e($MinimumQuantity) ?>"></td>
       </tr>
       <tr>
         <td>Supplier Name</td>
         <td>
           <label>
-            <input onKeyPress="return dg(event);" name="supplier" value="Doyel Eng" type="text" id="supplier" size="30" value="<?php if (isset($SupplierName)) {print $SupplierName;} ?>"/>
+            <input onKeyPress="return dg(event);" name="supplier" value="Doyel Eng" type="text" id="supplier" size="30" value="<?= e($SupplierName) ?>"/>
           </label>
         </td>
         <td>Sales Price</td>
-        <td><input name="SalesPrice" type="text" id="SalesPrice" value="<?php if (isset($SalesPrice)) {print $SalesPrice;} ?>"/></td>
+        <td><input name="SalesPrice" type="text" id="SalesPrice" value="<?= e($SalesPrice) ?>"/></td>
         <td width="26%">Max</td>
-        <td width="19%"><input name="MaximumQuantity" type="text" id="MaximumQuantity" value="<?php if (isset($MinimumQuantity)) {print $MinimumQuantity;} ?>"></td>
+        <td width="19%"><input name="MaximumQuantity" type="text" id="MaximumQuantity" value="<?= e($MinimumQuantity) ?>"></td>
       </tr>
       <tr>
         <td>Catagory</td>
         <td>
           <select name="GenericName" id="select">
-            <option selected><?php if (isset($GenericName)) {print $GenericName;} else print "Select Catagory" ?></option>
+            <option selected><?= e($GenericName ?? 'Select Catagory') ?></option>
             <option>Row Material</option>
             <option>Sales Item</option>
           </select>
@@ -122,7 +115,7 @@ mysql_close($conn);
         <td>Item Type</td>
         <td>
           <select name="ItemType" id="select">
-            <option value="<?php if (isset($ItemType)) {print $ItemType;} else print "Select Catagory" ?>" selected><?php if (isset($ItemType)) {print $ItemType;} else print "Select Catagory" ?></option>
+            <option value="<?= e($ItemType ?? 'Select Catagory') ?>" selected><?= e($ItemType ?? 'Select Catagory') ?></option>
             <option value="P">Piston</option>
             <option value="L">Liner</option>
             <option value="DP">Dhalay Puli</option>

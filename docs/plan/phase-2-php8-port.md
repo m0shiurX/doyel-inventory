@@ -151,7 +151,8 @@ Steps:
 **Resolves:** S1 (unauthenticated `search.php`), S2, S5 for these files
 
 - `search.php`: `LIKE ?` with the bound value `'%' . $term . '%'`. Keep `LIMIT 10` and the `<tr><td class="re">` markup that `primary.js` parses. Escape the names with `e()`.
-- Renaming a customer changes `Nickname`, but sales and collections still reference the old name (D4). Keep the legacy behaviour and add a visible warning on the edit form. The ID migration is optional work after Phase 4.
+- The existing customer edit form keeps `Nickname` readonly and updates other customer fields; preserve that workflow. Add an edit-only warning that historical sales/collections use the nickname string and are not rewritten if it changes externally (D4). The ID migration remains optional work after Phase 4.
+- Item stock: omitted/disabled stock on INSERT retains the legacy zero default. On UPDATE, an absent `totalQnty` must preserve stored stock rather than resetting existing inventory to zero. This deliberate safety fix needs an existing nonzero-stock edit assertion; explicit stock-field submissions retain the current role/workflow semantics.
 
 **Done when (in addition to the common list):** scenario 6 (item and customer parts) matches the legacy golden output.
 
