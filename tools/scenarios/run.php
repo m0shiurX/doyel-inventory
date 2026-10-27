@@ -210,12 +210,28 @@ function run_scenario(Scenario $s, int $number): void
                 $s->check($id>0,'posted bill fixture missing');
                 $ids=array_column($s->rows("SELECT DISTINCT ItemID FROM $detail WHERE $key=? ORDER BY ItemID",[$id]),'ItemID');
                 $s->billDump($kind,$id,"$role-before-"); $s->stock($ids,"$role-$kind-stock-before");
+                $stockBefore = array_column($s->rows('SELECT ItemID,Qnty FROM canteen_item WHERE ItemID IN (' . implode(',',array_fill(0,count($ids),'?')) . ') ORDER BY ItemID', $ids), 'Qnty', 'ItemID');
+                $quantities = array_column($s->rows("SELECT ItemID,SUM(Qnty) AS quantity FROM $detail WHERE $key=? GROUP BY ItemID ORDER BY ItemID",[$id]), 'quantity', 'ItemID');
+                $lineCount = (int)$s->value("SELECT COUNT(*) FROM $detail WHERE $key=?",[$id]);
                 $s->http('/Unpost.php?' . ($sale?'s':'p') . '=' . $id);
                 $s->emit("$role-$kind-after-unpost",$s->rows("SELECT $key,Post FROM $table WHERE $key=?",[$id]));
                 $s->http('/Unpost.php?' . ($sale?'d':'dl') . '=' . $id);
                 if ($s->target==='legacy') {
                     $s->check((int)$s->value("SELECT COUNT(*) FROM $table WHERE $key=?",[$id])===0,'legacy bill delete did not execute');
                     $s->check((int)$s->value("SELECT COUNT(*) FROM $detail WHERE $key=?",[$id])>0,'legacy orphan baseline changed');
+                } else {
+                    $admin = $role === 'admin';
+                    $s->check((int)$s->value("SELECT COUNT(*) FROM $table WHERE $key=?",[$id]) === ($admin ? 0 : 1),'modern header authorization/delete failed');
+                    $s->check((int)$s->value("SELECT COUNT(*) FROM $detail WHERE $key=?",[$id]) === ($admin ? 0 : $lineCount),'modern detail authorization/delete failed');
+                    if (!$admin) $s->check((int)$s->value("SELECT Post FROM $table WHERE $key=?",[$id]) === 1,'non-admin unpost changed the bill');
+                    $stockAfter = array_column($s->rows('SELECT ItemID,Qnty FROM canteen_item WHERE ItemID IN (' . implode(',',array_fill(0,count($ids),'?')) . ') ORDER BY ItemID', $ids), 'Qnty', 'ItemID');
+                    foreach ($stockBefore as $item => $quantity) {
+                        $expected = (float)$quantity + ($admin ? ($sale ? 1 : -1) * (float)$quantities[$item] : 0);
+                        $s->check(abs((float)$stockAfter[$item] - $expected) < 0.000001,'modern bill stock reversal incorrect');
+                    }
+                    // Repeated requests must neither recreate lines nor reverse stock twice.
+                    $s->http('/Unpost.php?' . ($sale?'d':'dl') . '=' . $id);
+                    $s->check($stockAfter === array_column($s->rows('SELECT ItemID,Qnty FROM canteen_item WHERE ItemID IN (' . implode(',',array_fill(0,count($ids),'?')) . ') ORDER BY ItemID', $ids), 'Qnty', 'ItemID'),'repeated bill delete changed stock');
                 }
                 $s->billDump($kind,$id,"$role-after-"); $s->stock($ids,"$role-$kind-stock-after");
             }
