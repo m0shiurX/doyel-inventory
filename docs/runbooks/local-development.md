@@ -83,3 +83,18 @@ Before production cut-over, record and rehearse on the actual Windows runtime:
 
 This Windows acceptance remains a cut-over requirement. It cannot be claimed from
 this macOS/Linux development environment.
+
+## Optional source migrations after a fixture reset
+
+`DOYEL_DB_MIGRATIONS` can name comma-separated three-digit source migration IDs,
+for example `DOYEL_DB_MIGRATIONS=001 tools/db-reset.sh legacy`. Each ID must
+resolve to exactly one regular, non-symlink `db/migrations/NNN_*.up.sql` file in
+the repository. Duplicate, malformed, missing or ambiguous IDs fail before the
+database is dropped. No arbitrary SQL path is accepted. Migrations run in the
+listed order, after import, in fresh connections using the server's normal SQL
+mode. Leave the variable unset to reproduce the original schema exactly.
+
+The HTTP scenario runner inherits this setting on every per-scenario reset; use
+`DOYEL_DB_MIGRATIONS=001` to verify Phase 1 against the indexed schema rather than
+accidentally resetting back to the unindexed baseline. Reset output records each
+applied migration. Source migrations belong in git; private dumps never do.

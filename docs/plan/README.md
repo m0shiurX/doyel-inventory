@@ -86,7 +86,7 @@ Phase 2 can start as soon as Phase 0 is merged. It doesn't wait for Phase 1.
 | S0.3 | Read-only characterization | merged |
 | S0.4 | Write-flow scenarios | merged |
 | S0.5 | Perf and query-count baseline | merged |
-| S1.1 | Index migration | todo |
+| S1.1 | Index migration | merged |
 | S1.2 | Production runbook for Phase 1 | todo |
 | S2.1 | Foundation (`lib/`) + exemplar page | todo |
 | S2.2 | Auth and users | todo |

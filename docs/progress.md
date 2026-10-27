@@ -16,3 +16,7 @@ Reports under `docs/reports/` contain verification evidence and limitations. The
 ## Read-only implementation preflight
 
 Before Phase 2, supplementary source/schema inspection confirmed all 13 tables use InnoDB and password storage is VARCHAR(255). The plan now covers omitted GET mutations, intermediate S2.1 fixture-session verification before the login port, fractional stock quantities and three-decimal unit rates, and cleanup before constraints during cut-over. These amendments preserve data precision and close actual inventory gaps; they do not represent completed implementation slices.
+
+## Durable private preservation
+
+Private source dumps, Phase 0 golden outputs and history recovery now also exist in `/Users/m0shiur/.doyel-fixtures/` and `/Users/m0shiur/.doyel-recovery/`; source checksums verified. Active test agents continue using `/private/tmp/doyel-fixtures` to avoid disrupting in-flight runs. No client data is committed.

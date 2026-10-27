@@ -19,6 +19,13 @@ Directories have mode 700 and dump files mode 600. Set
 a temporary workspace, not durable storage; retain a private durable copy before
 OS temporary-file cleanup. No dump contents belong in git, screenshots or reports.
 
+During orchestration, durable private copies were also created at
+`/Users/m0shiur/.doyel-fixtures/` (all three source dumps and Phase 0 golden outputs)
+and `/Users/m0shiur/.doyel-recovery/` (history recovery). All three dump checksums
+match the active temporary inputs. Active agents continue using the temporary
+paths for this run; the durable inputs/recovery do not depend on temporary-file
+retention. Keep these directories private and outside source control.
+
 The historical inventory found the root path
 `software-sql-backup-25-10-2026--11-01-41.sql` in both pre-cleanup commits. The
 working copies under `docs/` and `unsused_Backups/myBackups/` were untracked.

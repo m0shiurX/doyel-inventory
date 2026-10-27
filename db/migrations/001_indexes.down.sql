@@ -1,0 +1,28 @@
+-- S1.1 rollback: remove only objects introduced by 001_indexes.up.sql.
+ALTER TABLE canteen_stock_detail
+    DROP INDEX idx_stock_snapshot_supplier,
+    DROP COLUMN ID;
+ALTER TABLE canteen_expenses
+    DROP INDEX idx_expenses_date,
+    DROP INDEX idx_expenses_head_date,
+    DROP INDEX idx_expenses_description_date;
+ALTER TABLE canteen_collection
+    DROP INDEX idx_collection_description,
+    DROP INDEX idx_collection_date,
+    DROP INDEX idx_collection_head_date;
+ALTER TABLE canteen_purchase_detail
+    DROP INDEX idx_purchase_detail_bill,
+    DROP INDEX idx_purchase_detail_item_date;
+ALTER TABLE canteen_purchase
+    DROP INDEX idx_purchase_user_post_date,
+    DROP INDEX idx_purchase_post_date,
+    DROP INDEX idx_purchase_supplier_date;
+ALTER TABLE canteen_sales_detail
+    DROP INDEX idx_sales_detail_bill,
+    DROP INDEX idx_sales_detail_item_date,
+    DROP INDEX idx_sales_detail_date;
+ALTER TABLE canteen_sales
+    DROP INDEX idx_sales_customer,
+    DROP INDEX idx_sales_user_post_date,
+    DROP INDEX idx_sales_post_date,
+    DROP INDEX idx_sales_date;
