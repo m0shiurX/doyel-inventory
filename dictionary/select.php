@@ -1,28 +1,11 @@
 <?php
-
-if (!empty ($_GET["q"])){
-$q=$_GET["q"];
-//$q="Apachi My SQL PHP";
-include '../connect.php';
-
-  $sql = mysql_query("SELECT ItemID, PurPrice, SalesPrice, Qnty FROM canteen_item WHERE ItemName = '$q' ");
-//  $rs=mysql_query($sql, $conn) or die (mysql_error());
-        if(mysql_num_rows($sql)>0){
-            while ($row=mysql_fetch_object($sql)){
-
-$ItemID=$row->ItemID;
-$TQnty= $row->Qnty;
-$PurPrice=$row->PurPrice;
-$SalesPrice=$row->SalesPrice;
-       //echo "<input name=\"rate\" type=\"text\" id=\"rate\"  value=".$Price .">";
-echo $ItemID;
-echo "/$TQnty";
-echo "/$PurPrice";
-echo "/$SalesPrice";
-
-
-
-      }
-        }
+require __DIR__ . '/../lib/bootstrap.php';
+require_login_json();
+header('Content-Type: text/plain; charset=UTF-8');
+$q = is_string($_GET['q'] ?? null) ? $_GET['q'] : '';
+if ($q !== '') {
+    $item = db_one('SELECT ItemID, Qnty, PurPrice, SalesPrice FROM canteen_item WHERE ItemName = ? ORDER BY ItemID LIMIT 1', [$q]);
+    if ($item !== null) echo implode('/', [$item->ItemID, $item->Qnty, $item->PurPrice, $item->SalesPrice]);
 }
-?> 
+// The legacy endpoint ends with one space; keep the exact slash protocol bytes.
+echo ' ';

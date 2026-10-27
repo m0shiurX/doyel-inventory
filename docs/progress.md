@@ -20,3 +20,10 @@ Before Phase 2, supplementary source/schema inspection confirmed all 13 tables u
 ## Durable private preservation
 
 Private source dumps, Phase 0 golden outputs and history recovery now also exist in `/Users/m0shiur/.doyel-fixtures/` and `/Users/m0shiur/.doyel-recovery/`; source checksums verified. Active test agents continue using `/private/tmp/doyel-fixtures` to avoid disrupting in-flight runs. No client data is committed.
+
+## Integration follow-ups
+
+- S4.3: forced PDO exceptions in S2.7/S2.3 currently produce a development fatal body with HTTP 200; the global handler must explicitly set 500 and clear buffered partial output. Normal requests are diagnostic-free.
+- S2.10: inspect username length consistency before accepting new users. Business tables use 30-character usernames; user creation must not create identities that strict-mode bill/cash writes cannot store.
+- S4.3/S4.5: verify exception logs cannot be downloaded through the web server; prefer a private configurable location outside the public document root if server-specific rules cannot reliably protect `logs/`.
+- S3.3: after stock becomes DECIMAL, exercise fractional sale/add/remove and bill reversal; Phase 2 intentionally retains the old integer stock column until that migration.
