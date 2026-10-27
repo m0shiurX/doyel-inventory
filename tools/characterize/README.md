@@ -65,7 +65,7 @@ visible output. CSS stylesheets and JavaScript are not executed; browser keyboar
 and visual behavior belongs to S4.4.
 
 The single normalization table names each rule: the menu's signed-in title,
-Report's two default date inputs, and Accounts' six wall-clock period summaries.
+Report's two default date inputs, Accounts' six wall-clock period summaries, and the exact live `report/closingBalance.php` heading date (`Closing Balance Date - <today>`). Saved snapshot dates remain literal.
 Historical bill/report dates, saved snapshots, item quantities and cash-in-hand
 are preserved. Dictionary array endpoints compare ordered suggestion strings,
 ignoring the legacy trailing-comma/whitespace syntax that the planned JSON port

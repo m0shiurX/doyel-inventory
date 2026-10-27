@@ -1,79 +1,71 @@
-<?php session_start() ?>
+<?php
+require __DIR__ . '/../lib/bootstrap.php';
+require_login();
+// Aggregate and ordered rows travel together; no query is issued per category.
+$rows = db_all('SELECT i.ItemID, i.ItemName, i.PurPrice, i.SalesPrice, i.Qnty,
+    g.GenericName AS GroupName, g.GroupID, g.sub_total, g.GroupPurPrice, g.GroupSalesPrice, g.Quantity
+    FROM (SELECT GenericName, MIN(ItemID) AS GroupID, COUNT(*) AS sub_total,
+        SUM(PurPrice) AS GroupPurPrice, SUM(SalesPrice) AS GroupSalesPrice, SUM(Qnty) AS Quantity
+        FROM canteen_item WHERE D = ? GROUP BY GenericName) g
+    JOIN canteen_item i ON i.GenericName = g.GenericName AND i.D = ?
+    ORDER BY g.GenericName, i.ItemName, i.ItemID', [0, 0]);
+$groups = [];
+foreach ($rows as $row) {
+    $groups[$row->GroupID]['summary'] = $row;
+    $groups[$row->GroupID]['items'][] = $row;
+}
+$Total = 0;
+$TotalPrice = 0;
+$TotalQnty = 0;
+?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
-    <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <link rel="stylesheet" type="text/css" href="Report.css">
 <title>List of Item</title>
 <div id="main">
 <div class="printb"">
   <a href="#" onClick="javascript:window.print()">Print</a>
 </div>
-<?php include("menu.php");
-include '../connect.php';
-
- $FormDate= $_SESSION['form_date'];
- $ToDate=$_SESSION['to_date'];
- 
-?>
+<?php include __DIR__ . '/menu.php'; ?>
 <div align="center"><h1>List of Item</h1></div>
-
 <table width="100%" border="0" cellspacing="0" cellpadding="1" id="tableGd">
-              <tr>
-              <th width="17%"><b>ID</b></th>
-              <th width="42%"><b>Name of Item </b></th>
-              <th width="20%"><b>Pur Price</b></th>
-              <th width="21%"><b>Sales Price</b></th>
-            </tr>
+<tr>
+<th width="17%"><b>ID</b></th>
+<th width="42%"><b>Name of Item </b></th>
+<th width="20%"><b>Pur Price</b></th>
+<th width="21%"><b>Sales Price</b></th>
+</tr>
+<?php foreach ($groups as $group): $summary = $group['summary']; ?>
+<tr align="left" bgcolor="#fff"><td colspan="4"><b><?= e($summary->GroupName) ?></b></td></tr>
+<?php foreach ($group['items'] as $row): ?>
+<tr id="<?= e($row->ItemID) ?>">
+<td><?= e($row->ItemID) ?></td>
+<td><?= e($row->ItemName) ?></td>
+<td><?= e($row->PurPrice) ?></td>
+<td><?= e($row->SalesPrice) ?></td>
+</tr>
+<?php endforeach; ?>
+<tr>
+<th><b>&nbsp;</b></th>
+<th><b>Sub Total &nbsp;&nbsp; <?= e($summary->sub_total) ?></b></th>
+<th><b><?= e(round((float)$summary->GroupPurPrice, 2)) ?></b></th>
+<th><b><?= e(round((float)$summary->GroupSalesPrice, 2)) ?></b></th>
+</tr>
 <?php
-    $Total=""; $TotalPrice="";
-    $sqlc="SELECT GenericName,count(*) as sub_total,SUM(PurPrice) as PurPrice,SUM(SalesPrice) as SalesPrice FROM canteen_item WHERE D='0' GROUP BY GenericName" ;
-	$rsc=mysql_query($sqlc, $conn) or die (mysql_error());
-        if(mysql_num_rows($rsc)>0){
-            while ($rowc=mysql_fetch_object($rsc)){
-			echo '<tr align="left" bgcolor="#fff"><td colspan="4"><b>';
-			echo $GenericName=$rowc->GenericName;
-			echo "</b></td></tr>\n";
-			item("$GenericName");
-			$PurPrice=round($rowc->PurPrice, 2);
-			$SalesPrice=round($rowc->SalesPrice, 2);
-			print "<tr>
-              <th><b>&nbsp;</b></th>
-              <th><b>Sub Total &nbsp;&nbsp; $rowc->sub_total</b></th>
-              <th><b>$PurPrice</b></th>
-              <th><b>$SalesPrice</b></th>
-            </tr>";
-			$Total=$Total+$rowc->sub_total;
-			$TotalPrice=$TotalPrice+round($rowc->PurPrice, 2);
-			}
-	    }
-		?>
-		<tr>
-              <th><b>&nbsp;</b></th>
-              <th><b>Total &nbsp;&nbsp; <?php echo $Total ?></b></th>
-              <th><b><?php echo $TotalPrice ?></b></th>
-              <th><b>&nbsp;</b></th>
-            </tr>
-	  </table>
- 	<?php
-		function item($GenericName){
-       $sql="SELECT * FROM canteen_item WHERE GenericName='$GenericName' AND D='0' ORDER BY ItemName";
-
-       $rs=mysql_query($sql) or die (mysql_error());
-        if(mysql_num_rows($rs)>0){
-            while ($row=mysql_fetch_object($rs)){
-
-		print "<tr id=\"$row->ItemID\">" ;
-                print "<td>$row->ItemID</td>\n";
-		print "<td>$row->ItemName</td>\n";
-		print "<td>$row->PurPrice</td>\n";
-		print "<td>$row->SalesPrice</td>\n";
-                print "</tr>\n";
-            	}
-        	}
-		}
-        ?>
-
+$Total += (int)$summary->sub_total;
+$TotalPrice += round((float)$summary->GroupPurPrice, 2);
+$TotalQnty += (float)$summary->Quantity;
+endforeach;
+?>
+<tr>
+<th><b>&nbsp;</b></th>
+<th><b>Total &nbsp;&nbsp; <?= e($groups ? $Total : '') ?></b></th>
+<th><b><?= e($groups ? $TotalPrice : '') ?></b></th>
+<th><b>&nbsp;</b></th>
+</tr>
+</table>
 </div>
-    </body>
+</body>
 </html>

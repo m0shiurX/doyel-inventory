@@ -8,6 +8,8 @@ function characterization_extract(string $html, string $page = ''): string
         'menu-title' => ['/^Doyel Eng\.\s*\|\s*.*$/u', 'Doyel Eng. | <user>'],
         // Report.php defaults these two input values to the day capture runs.
         'report-date-inputs' => ['start_date', 'end_date'],
+        // Only the live closing report prints today's date; saved snapshot dates stay literal.
+        'closing-current-date' => ['/^Closing Balance Date - \d{2}-[A-Za-z]{3}-\d{4}$/m', 'Closing Balance Date - <today>'],
         // Accounts.php uses the wall clock for these six live period summaries.
         'accounts-periods' => ['/(Cash (?:Collection|Expenses) (?:This Month|Previous Month|This Year))\n[^\n]*/u', '$1\n<current-period>'],
     ];
@@ -89,6 +91,7 @@ function characterization_extract(string $html, string $page = ''): string
     $flush();
     $text = implode("\n", $lines);
     if ($page === 'Accounts.php') $text = preg_replace($normalize['accounts-periods'][0], str_replace('\\n', "\n", $normalize['accounts-periods'][1]), $text);
+    if ($page === 'report/closingBalance.php') $text = preg_replace($normalize['closing-current-date'][0], $normalize['closing-current-date'][1], $text);
     return $text === '' ? '' : $text . "\n";
 }
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {

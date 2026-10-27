@@ -226,7 +226,7 @@ Steps:
 
 **Done when:**
 - `grep -rnE "mysql_|split\(|get_magic_quotes|Asia/Dacca|Report/" --include='*.php' .` returns nothing.
-- `tools/lint.sh $(git ls-files '*.php')` is clean.
+- `git ls-files -z '*.php' | xargs -0 tools/lint.sh` is clean (filenames with spaces stay intact).
 - The full `compare.sh` (pages and scenarios) has zero diffs except the consolidated list of intentional changes. That list is written to `docs/plan/phase-2-intentional-changes.md` for the owner to sign off.
 - `_errors.txt` on modern is empty at `E_ALL`.
 - Every remaining `page` from the updated S0.3 inventory redirects to `login.php` without a session. Every `endpoint` returns 401.
