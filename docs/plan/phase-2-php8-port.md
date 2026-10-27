@@ -98,7 +98,7 @@ Steps:
 
 - **Login:** look the user up by `UserName` and the stored hash.
   - If the stored value starts with `$2y$` / `$argon2`, check it with `password_verify`.
-  - Otherwise compare against `md5(legacy_escape($password))`. `legacy_escape` reproduces `mysql_real_escape_string`: it backslash-escapes `\0`, `\n`, `\r`, `\`, `'`, `"` and `\x1a`. That's how the hashes were made (S4). When the MD5 check passes, rehash with `password_hash(PASSWORD_DEFAULT)` and store the new hash. Every active user migrates silently on their next login.
+  - Otherwise compare against `md5(legacy_escape($password))`. `legacy_escape` reproduces `mysql_real_escape_string`: it backslash-escapes `\0`, `\n`, `\r`, `\`, `'`, `"` and `\x1a`. That's how the hashes were made (S4). When the MD5 check passes, rehash with `password_hash(PASSWORD_DEFAULT)` and store the new hash. For NUL-containing or >72-byte passwords, use Argon2id with an explicit runtime capability guard: bcrypt cannot preserve those passwords safely. Never silently truncate or overwrite the legacy hash when the stronger algorithm is unavailable. The Windows runtime must support Argon2id for those cases. Every supported active user migrates silently on their next login.
   - Duplicate usernames (D5): select all rows with that name and accept the first one whose password verifies, in `user_id` order.
   - Call `session_regenerate_id(true)` after a successful login.
 - **Change password** and **add/edit user:** store `password_hash`. Reject an empty new password. Keep the existing form flow.

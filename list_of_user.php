@@ -1,4 +1,7 @@
-<?php session_start() ?>
+<?php
+require __DIR__ . '/lib/bootstrap.php';
+require_admin();
+?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
     <head>
@@ -8,39 +11,26 @@
 
 <div id="main">
 	<?php include("menu.php"); ?>
-<h2>User Area</h2>	
+<h2>User Area</h2>
 	<?php
-include 'connect.php';
-
-if (!empty($_POST['username']) && !empty($_POST['name']))
-    {
-    $username=$_POST['username'];
-    $password=md5($_POST['password']);
-    $name=$_POST['name'];
-    $email=$_POST['email'];
-    $mobile=$_POST['mobile'];
-    $addess=$_POST['addess'];
-    date_default_timezone_set('Asia/Dacca');
-    $date= date("Y-m-d");
-
-    $query = mysql_query("INSERT INTO l_user (UserName, password, FullName, email, address, mobile, m_date)
-            VALUES ('$username','$password','$name','$email','$addess','$mobile','$date')");
-    
-if ($query)
-    {
- echo   "<h2>User Added.</h2>";
+$added = false;
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    $username = (is_string($_POST['username'] ?? null) ? $_POST['username'] : '');
+    $password = (is_string($_POST['password'] ?? null) ? $_POST['password'] : '');
+    $name = (is_string($_POST['name'] ?? null) ? $_POST['name'] : '');
+    if ($username === '' || $name === '' || $password === '') echo '<span class="warning">Name, username and a nonempty password are required.</span>';
+    else {
+        try {
+        db_exec('INSERT INTO l_user (UserName, password, FullName, email, address, mobile, m_date, userAtho) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [$username, auth_hash_password($password), $name, (is_string($_POST['email'] ?? null) ? $_POST['email'] : ''), (is_string($_POST['addess'] ?? null) ? $_POST['addess'] : ''), (is_string($_POST['mobile'] ?? null) ? $_POST['mobile'] : ''), date('Y-m-d'), 0]);
+        echo '<h2>User Added.</h2>';
+        $added = true;
+        } catch (UnsupportedPasswordHash $error) { echo '<span class="warning">' . e($error->getMessage()) . '</span>'; }
     }
-    else{
-      echo   "<h2>Errors</h2>";
-    }
-    }
-    else
-        {
-form();
-    }
+}
+if (!$added) form();
 ?>
-	
-	
+
+
         <?php
   function form(){
         ?><fieldset><legend>Add User</legend>
@@ -109,22 +99,14 @@ form();
             <td width="121">Mobile No</td>
           </tr>
 
-        <p>		
+        <p>
           <?php
-        $sql="SELECT * FROM l_user" ;
-
-       $rs=mysql_query($sql, $conn) or die (mysql_error());
-        if(mysql_num_rows($rs)>0){
-            while ($row=mysql_fetch_object($rs)){
-			
-			echo '<tr>';
-                print "<td>$row->user_id</td><td>$row->FullName</td><td>$row->UserName</td><td>$row->mobile</td>" ;
-             echo '</tr>';
-            }
+        foreach (db_all('SELECT user_id, FullName, UserName, mobile FROM l_user ORDER BY user_id') as $row) {
+            echo '<tr><td>' . e($row->user_id) . '</td><td>' . e($row->FullName) . '</td><td>' . e($row->UserName) . '</td><td>' . e($row->mobile) . '</td></tr>';
         }
 
         ?>
-        </table>          
+        </table>
         </p>
         <?php include 'footer.php'; ?>
   </div>

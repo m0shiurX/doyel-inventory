@@ -34,3 +34,58 @@ function require_login_json(): void
     echo json_encode(['error' => 'Authentication required']);
     exit;
 }
+
+// Legacy login hashed the MySQL-escaped bytes, not the original password.
+function legacy_escape(string $password): string
+{
+    return strtr($password, ["\\" => "\\\\", "\0" => "\\0", "\n" => "\\n", "\r" => "\\r", "'" => "\\'", '"' => '\\"', "\x1a" => "\\Z"]);
+}
+function auth_password_matches(string $password, string $stored): bool
+{
+    if ($password === '') return false;
+    if (str_starts_with($stored, '$2y$')) {
+        // Never accept bcrypt's truncated-prefix equivalence as a full password.
+        if (strlen($password) > 72 || str_contains($password, "\0")) return false;
+        return password_verify($password, $stored);
+    }
+    if (str_starts_with($stored, '$argon2')) return password_verify($password, $stored);
+    return preg_match('/^[a-f0-9]{32}$/iD', $stored) === 1 && hash_equals(strtolower($stored), md5(legacy_escape($password)));
+}
+class UnsupportedPasswordHash extends RuntimeException {}
+function auth_password_algorithm(string $password): string|int
+{
+    if (str_contains($password, "\0") || strlen($password) > 72) {
+        if (!defined('PASSWORD_ARGON2ID') || !in_array(PASSWORD_ARGON2ID, password_algos(), true)) {
+            throw new UnsupportedPasswordHash('This server cannot securely update this password. Please contact the administrator.');
+        }
+        return PASSWORD_ARGON2ID;
+    }
+    return PASSWORD_DEFAULT;
+}
+function auth_hash_password(string $password): string
+{
+    return password_hash($password, auth_password_algorithm($password));
+}
+function authenticate_user(string $username, string $password): ?object
+{
+    if ($username === '' || $password === '') return null;
+    foreach (db_all('SELECT user_id, UserName, password, userAtho FROM l_user WHERE UserName = ? ORDER BY user_id', [$username]) as $user) {
+        if (!auth_password_matches($password, $user->password)) continue;
+        if (password_needs_rehash($user->password, auth_password_algorithm($password))) {
+            // Match the verified hash too, so a concurrent password reset is never overwritten.
+            $changed = db_exec('UPDATE l_user SET password = ? WHERE user_id = ? AND password = ?', [auth_hash_password($password), $user->user_id, $user->password]);
+            if ($changed === 0) {
+                $fresh = db_one('SELECT user_id, UserName, password, userAtho FROM l_user WHERE user_id = ?', [$user->user_id]);
+                // Another login may have upgraded the hash, or a reset changed it.
+                return $fresh !== null && auth_password_matches($password, $fresh->password) ? $fresh : null;
+            }
+        }
+        return $user;
+    }
+    return null;
+}
+function current_user_id(): ?int
+{
+    $id = filter_var($_SESSION['user_id'] ?? null, FILTER_VALIDATE_INT);
+    return $id !== false && $id > 0 ? $id : null;
+}

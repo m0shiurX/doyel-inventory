@@ -1,4 +1,22 @@
-<?php session_start() ?>
+<?php
+require __DIR__ . '/lib/bootstrap.php';
+$loginError = '';
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    $username = (is_string($_POST['username'] ?? null) ? $_POST['username'] : '');
+    $password = (is_string($_POST['password'] ?? null) ? $_POST['password'] : '');
+    $user = null;
+    try { $user = authenticate_user($username, $password); }
+    catch (UnsupportedPasswordHash $error) { $loginError = $error->getMessage(); }
+    if ($user !== null) {
+        session_regenerate_id(true);
+        $_SESSION['Username'] = $user->UserName;
+        $_SESSION['admin'] = $user->userAtho;
+        $_SESSION['user_id'] = (int)$user->user_id;
+        redirect('index.php');
+    }
+    if ($loginError === '') $loginError = 'Sorry, your account could not be found. Please try again.';
+}
+?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
   <head>
@@ -8,7 +26,7 @@
 <script type="text/javascript">
 
      window.onload = function()
-        {                
+        {
 			document.loginform.username.focus()
         };
 
@@ -16,14 +34,14 @@ function logsubmit()
 {
     document.forms["loginform"].submit();
 }
-	
+
 function setfocus1(x)
 {
 switch (x)
 {
 case 'username':
   document.loginform.password.focus();
-  break;    
+  break;
 case 'password':
   document.forms["loginform"].submit();
   break;
@@ -33,39 +51,9 @@ case 'password':
 }
 </script>
 
-    
+
 <div class="loginforms">
-<?php include 'connect.php';
-
-function mres($input){
-	if(get_magic_quotes_gpc()){
-		$input= stripslashes($input);
-	}
-	return mysql_real_escape_string($input);
-}
-
-if(!empty($_POST['username']) && !empty($_POST['password']))
-{
-	$username = mres($_POST['username']);
-    $password = md5(mysql_real_escape_string($_POST['password']));
-	//echo "SELECT * FROM l_user WHERE UserName = '".$username."' AND password = '".$password."'";
-	$checklogin = mysql_query("SELECT * FROM l_user WHERE UserName = '".$username."' AND password = '".$password."'");
-
-    if(mysql_num_rows($checklogin) == 1)
-    {
-    	 $row = mysql_fetch_array($checklogin);
-
-    $_SESSION['Username'] = $row['UserName'];
-		$_SESSION['admin'] = $row['userAtho'];
-    require_once 'menu.php';
-    redirectTo('index.php');
-    }
-    else
-    {
-        echo '<span class="warning">Sorry, your account could not be found. Please try again.</span>';
-    }
-}
-?>
+<?php if ($loginError !== ''): ?><span class="warning"><?= e($loginError) ?></span><?php endif; ?>
 
 <div align="center">
 <img width="200" height="175" src="images/login_icon.gif">
@@ -75,7 +63,7 @@ if(!empty($_POST['username']) && !empty($_POST['password']))
 
 		Username:
                 <input autocomplete="off" onKeyUp="if(event.keyCode==13) setfocus1(this.name);" type="text" name="username" id="username" /><br />
-		Password: 
+		Password:
                 <input onKeyUp="if(event.keyCode==13) setfocus1(this.name);" type="password" name="password" id="password" /><br />
 		<input onClick="logsubmit()" type="button" name="login" id="login" value="Login" />
   </form>

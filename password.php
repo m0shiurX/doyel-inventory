@@ -1,47 +1,42 @@
-<?php session_start() ?>
-
 <?php
-$UserName=$_SESSION['Username'];
-
-include 'connect.php';
-
-if(!empty($_POST['oPass']) && !empty($_POST['nPass']) && !empty($_POST['cPass']))
-{
-    $oPass = md5(mysql_real_escape_string($_POST['oPass']));
-	$nPass = md5(mysql_real_escape_string($_POST['nPass']));
-	$cPass = md5(mysql_real_escape_string($_POST['cPass']));
-
-	 $checklogin = mysql_query("SELECT * FROM l_user WHERE UserName = '".$UserName."' AND password = '".$oPass."'");
-
-    if(mysql_num_rows($checklogin) == 1)
-    {
-
-// Update Password
-
-if ($nPass==$cPass)
-	{
-	
-	mysql_query("UPDATE l_user SET password ='$nPass' WHERE UserName='$UserName'");
-	echo '<b>Your password is succesfuly change.</b>';
-	}
-	else { echo '<span class="warning">The psassword confirmation does not match. Please try again.</span>';}
-
-// Update Password Colse
+require __DIR__ . '/lib/bootstrap.php';
+require_login();
+$UserName = current_user();
+$message = '';
+$success = false;
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    $oldPassword = (is_string($_POST['oPass'] ?? null) ? $_POST['oPass'] : '');
+    $newPassword = (is_string($_POST['nPass'] ?? null) ? $_POST['nPass'] : '');
+    $confirmation = (is_string($_POST['cPass'] ?? null) ? $_POST['cPass'] : '');
+    $id = current_user_id();
+    $users = $id !== null
+        ? db_all('SELECT user_id, password FROM l_user WHERE user_id = ? AND UserName = ?', [$id, $UserName])
+        : db_all('SELECT user_id, password FROM l_user WHERE UserName = ? ORDER BY user_id', [$UserName]);
+    $matched = null;
+    foreach ($users as $user) {
+        if (auth_password_matches($oldPassword, $user->password)) { $matched = $user; break; }
     }
-    else
-    {
-        echo '<span class="warning">Sorry, your current password is not Correct. Please try again.</span>';
+    if ($matched === null) $message = 'Sorry, your current password is not Correct. Please try again.';
+    elseif ($newPassword === '') $message = 'Please enter a new password.';
+    elseif ($newPassword !== $confirmation) $message = 'The psassword confirmation does not match. Please try again.';
+    else {
+        try {
+            $changed = db_exec('UPDATE l_user SET password = ? WHERE user_id = ? AND password = ?', [auth_hash_password($newPassword), $matched->user_id, $matched->password]);
+            if ($changed === 1) {
+                $_SESSION['user_id'] = (int)$matched->user_id;
+                session_regenerate_id(true);
+                $success = true;
+                $message = 'Your password is succesfuly change.';
+            } else $message = 'Your password changed in another session. Please log in again.';
+        } catch (UnsupportedPasswordHash $error) { $message = $error->getMessage(); }
     }
 }
-
-
-
+if ($message !== '') echo $success ? '<b>' . e($message) . '</b>' : '<span class="warning">' . e($message) . '</span>';
 ?>
-
 
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <title>Change Password</title>
 		<link href="css/Style.css" rel="stylesheet" type="text/css">
 </head>
@@ -55,7 +50,7 @@ if ($nPass==$cPass)
       <tr>
         <td width="64">&nbsp;</td>
         <td width="153">User Name </td>
-        <td width="216"><input name="Pass" type="text" id="Pass" value="<?php echo $UserName ; ?>" readonly="Yes" /></td>
+        <td width="216"><input name="Pass" type="text" id="Pass" value="<?= e($UserName) ?>" readonly="Yes" /></td>
       </tr>
       <tr>
         <td>&nbsp;</td>
