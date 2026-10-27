@@ -11,6 +11,8 @@ Other database names must start with doyel_. This erases that local database.
 Requires Docker Compose; start its matching profile first.
 DOYEL_DB_MIGRATIONS optionally lists comma-separated migration IDs (e.g. 001).
 Each ID must resolve to exactly one repository db/migrations/NNN_*.up.sql file.
+DOYEL_DB_CLEANUP_AS_OF=YYYY-MM-DD opts into local S3.2 cleanup after 002,
+before later migrations. Requires modern doyel_* and ordered 001,002 migrations.
 USAGE
 }
 [ "${1:-}" != -h ] && [ "${1:-}" != --help ] || { usage; exit 0; }
@@ -39,6 +41,19 @@ if [ -n "${DOYEL_DB_MIGRATIONS:-}" ]; then
         migration_files+=("${matches[0]}")
     done
 fi
+# Cleanup is an explicit fresh-fixture opt-in, validated before DROP/import.
+if [ -n "${DOYEL_DB_CLEANUP_AS_OF:-}" ]; then
+    [ "$target" = modern ] && [[ "$dbname" =~ ^doyel_[A-Za-z0-9_]+$ ]] || { printf 'Cleanup requires isolated modern doyel_* database\n' >&2; exit 1; }
+    [[ "${DOYEL_DB_MIGRATIONS:-}" =~ ^001,002(,[0-9]{3})*$ ]] || { printf 'Cleanup requires ordered migrations starting 001,002\n' >&2; exit 1; }
+    previous_id=0
+    for migration_id in "${migration_ids[@]}"; do
+        current_id=$((10#$migration_id))
+        [ "$current_id" -gt "$previous_id" ] || { printf 'Cleanup requires strictly increasing migrations\n' >&2; exit 1; }
+        previous_id=$current_id
+    done
+    [ -f "$repo/db/cleanup/cleanup.php" ] && [ ! -L "$repo/db/cleanup/cleanup.php" ] || { printf 'Missing cleanup source\n' >&2; exit 1; }
+    php -r '$s=$argv[1]; $d=DateTimeImmutable::createFromFormat("!Y-m-d",$s); exit(!$d || $d->format("Y-m-d")!==$s);' "$DOYEL_DB_CLEANUP_AS_OF" || { printf 'Invalid cleanup calendar date\n' >&2; exit 1; }
+fi
 compose=(docker compose -f "$repo/docker/compose.yaml" --profile "$target")
 mysql_local() {
     "${compose[@]}" exec -T -e MYSQL_PWD=doyel-local "$target-db" \
@@ -59,6 +74,14 @@ if [ -n "${DOYEL_DB_MIGRATIONS:-}" ]; then
     for migration_file in "${migration_files[@]}"; do
         mysql_local "$dbname" < "$migration_file"
         printf 'Applied local source migration %s\n' "$(basename "$migration_file")"
+        if [ -n "${DOYEL_DB_CLEANUP_AS_OF:-}" ] && [[ "$(basename "$migration_file")" = 002_* ]]; then
+            cleanup_dir=$(mktemp -d "$fixture_dir/s32-reset.XXXXXXXX")
+            chmod 700 "$cleanup_dir"
+            cleanup=(env DOYEL_DB_HOST=127.0.0.1 DOYEL_DB_PORT=33084 DOYEL_DB_USER=root DOYEL_DB_PASS=doyel-local DOYEL_DB_NAME="$dbname" php "$repo/db/cleanup/cleanup.php" --as-of="$DOYEL_DB_CLEANUP_AS_OF")
+            "${cleanup[@]}" --report="$cleanup_dir/preview.json" > "$cleanup_dir/preview.log"
+            "${cleanup[@]}" --apply="$cleanup_dir/preview.json" --backup="$cleanup_dir/backup.json" > "$cleanup_dir/apply.log"
+            printf 'Applied local S3.2 cleanup after 002 as-of %s (private evidence: %s)\n' "$DOYEL_DB_CLEANUP_AS_OF" "$cleanup_dir"
+        fi
     done
 fi
 printf 'Reset local %s database %s. Row counts:\n' "$target" "$dbname"

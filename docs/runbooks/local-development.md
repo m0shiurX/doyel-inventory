@@ -98,3 +98,27 @@ The HTTP scenario runner inherits this setting on every per-scenario reset; use
 `DOYEL_DB_MIGRATIONS=001` to verify Phase 1 against the indexed schema rather than
 accidentally resetting back to the unindexed baseline. Reset output records each
 applied migration. Source migrations belong in git; private dumps never do.
+
+## Phase 3 cleanup on disposable fixtures
+
+Opt in explicitly with `DOYEL_DB_CLEANUP_AS_OF=2026-10-28` and
+`DOYEL_DB_MIGRATIONS=001,002`. The reset validates the calendar date, modern
+`doyel_*` database, ordered migration list and cleanup source before DROP.
+It imports the original dump, applies 001 and 002, previews and applies S3.2,
+then applies any later requested migrations. Each reset writes a new private
+preview, full JSON row backup and apply log beneath `$DOYEL_FIXTURES/s32-reset.*`.
+Do not publish those files. Unset cleanup preserves the original reset behavior.
+
+```bash
+export DOYEL_FIXTURES=/private/tmp/doyel-fixtures
+export DOYEL_DB_HOST=127.0.0.1 DOYEL_DB_PORT=33084
+export DOYEL_DB_USER=root DOYEL_DB_PASS=doyel-local DOYEL_DB_NAME=doyel_s32
+DOYEL_DB_MIGRATIONS=001,002 DOYEL_DB_CLEANUP_AS_OF=2026-10-28 \
+  tools/db-reset.sh modern doyel_s32
+# Same two opt-in variables must accompany run-all: EVERY scenario resets.
+DOYEL_DB_MIGRATIONS=001,002 DOYEL_DB_CLEANUP_AS_OF=2026-10-28 \
+  tools/scenarios/run-all.sh http://127.0.0.1:8132 modern "$DOYEL_FIXTURES/s32-scenarios"
+```
+
+For later Phase 3 rehearsal use `001,002,003` or `001,002,003,004`; cleanup still
+runs immediately after 002. Never run fixture reset against production.
