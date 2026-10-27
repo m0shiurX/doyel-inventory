@@ -85,7 +85,7 @@ Steps:
 6. Write `tools/lint.sh`, which runs `php -l` on every file passed to it, and add a usage line to `tools/characterize/README.md`.
 
 **Done when:**
-- The common Done-when list passes for `index.php` and `logout.php`. Labels `dashboard` and `logout` match the legacy golden output.
+- The common Done-when list passes for `index.php` and `logout.php`. Labels `dashboard` and `logout` match the legacy golden output. At this intermediate slice `login.php` still uses the old connection API: create a private fixture session through a CLI-only verification helper for authenticated checks, then port login in S2.2 immediately afterwards. Do not add a mysql compatibility shim or claim the legacy login works on PHP 8.
 - `php -r 'require "lib/bootstrap.php"; var_dump(db_value("SELECT COUNT(*) FROM canteen_item"));'` prints `string(3) "868"`. The string type proves DEC4 is in effect.
 - `db_tx` rolls back on an exception. Show this with a throwaway CLI check: insert a row, throw, then count the rows.
 - A request to `index.php` with no session redirects to `login.php`. A request to a `report/` page that already uses the bootstrap redirects to `../login.php`.
@@ -206,6 +206,7 @@ Steps:
 **Resolves:** F6 (all seven files), S2 (report pages), P2 (`list_of_members.php`), F10
 
 - This is the hardest R5 work. For each `SELECT *, SUM() GROUP BY`, list in the report the columns the page prints and how each one is now derived.
+- `SendToProcessOfaPeriod.php` has a baseline query failure: it filters `canteen_sales.Date` without joining that table. Repair the join/date source deliberately and record the resulting nonempty report as an intentional behavior change rather than preserving the broken empty output.
 - Three file names contain spaces. Quote them in every command.
 
 **Done when:** the common list passes for every owned label, in both report ranges.

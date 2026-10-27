@@ -12,3 +12,7 @@ The owner authorized sequential slice implementation with subagents and direct c
 ## Slice reports
 
 Reports under `docs/reports/` contain verification evidence and limitations. The plan status table is authoritative for dependencies. Windows runtime acceptance is deferred to the Windows cut-over and must not block building the local regression stack.
+
+## Read-only implementation preflight
+
+Before Phase 2, supplementary source/schema inspection confirmed all 13 tables use InnoDB and password storage is VARCHAR(255). The plan now covers omitted GET mutations, intermediate S2.1 fixture-session verification before the login port, fractional stock quantities and three-decimal unit rates, and cleanup before constraints during cut-over. These amendments preserve data precision and close actual inventory gaps; they do not represent completed implementation slices.

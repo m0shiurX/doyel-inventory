@@ -44,12 +44,12 @@ Report, then (after sign-off) delete:
 2. Unposted sales bills older than 30 days with no detail rows (part of the 104).
 3. Orphan detail rows: `canteen_sales_detail` with no `canteen_sales` parent, and the same for purchases.
 4. Prune stock snapshots strictly older than two years (Q4). Record one Asia/Dhaka cutoff for preview and execution. Identify snapshots by header date; delete their detail rows by `SlNo` and then their headers in one transaction. Keep snapshots exactly at the cutoff; keep all newer snapshots. Do not prune sales, purchases, collections or expenses. Report malformed dates and orphan snapshot details separately rather than guessing their age.
-5. Rows that would break S3.3's types (fractional `canteen_item.Qnty`, or out-of-range values) are only listed here. Fix nothing.
+5. List out-of-range values and existing precision that S3.3 must preserve, including fractional detail quantities and three-decimal unit rates. Fix nothing in this report step.
 
 **Done when:**
 - `docs/data/S3.2.md` lists counts for each category, before and after, on the fixture.
 - A re-run reports 0 for every applied category.
-- The suites show diffs only where removed junk bills disappear from listings (e.g. `Unpost.php`), and those are listed.
+- The suites show diffs only where removed junk bills or pruned snapshots disappear from listings/reports; list every expected difference. Sales/purchase/collection transaction history stays intact.
 
 ## S3.3 Column types and defaults
 
@@ -57,7 +57,7 @@ Report, then (after sign-off) delete:
 **Owns:** `db/migrations/003_types_defaults.*`, `lib/` (formatting helper only, if needed)
 **Resolves:** D1, F7 (schema side)
 
-- Money columns (`Amount`, `Discount`, `Total`, `amount`, `PurPrice`, `SalesPrice`, `Rate`, `Amt`, `PurAmt`) become `DECIMAL(14,2)`. Quantities (`Qnty` in the detail tables) become `DECIMAL(12,3)`. `canteen_item.Qnty` becomes `DECIMAL(12,3)`, unless S3.2 showed only integers there, in which case `INT`.
+- Money totals (`Amount`, `Discount`, `Total`, `amount`, `Amt`, `PurAmt`) become `DECIMAL(14,2)`. Preserve unit-price precision: `Rate` uses at least `DECIMAL(14,3)` because existing sale/purchase rates include real three-decimal values (detail IDs 4487/2832); profile `PurPrice` and `SalesPrice` before selecting their scale and preserve meaningful existing precision. Do not label actual half-cent rounding as float noise. Quantities in detail tables and `canteen_item.Qnty` become `DECIMAL(12,3)` unconditionally: fractional sale details exist even though the old stock column was INT, so integer current-stock values do not justify keeping INT.
 - **Output stability:** DECIMAL columns come back as `"15710.00"` where FLOAT gave `"15710"`. Pick one of two approaches:
   - (a) add `fmt_money()`/`fmt_qty()` in `lib/html.php` that reproduce the legacy rendering (no trailing `.00`, as PHP printed FLOAT), and apply them where pages print these columns. This is a hand-off list for S3.3 to execute across pages, which is allowed in this slice and has to be listed;
   - (b) accept the `.00` rendering as an intentional change.
