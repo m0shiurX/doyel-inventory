@@ -19,6 +19,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $password = (is_string($_POST['password'] ?? null) ? $_POST['password'] : '');
     $name = (is_string($_POST['name'] ?? null) ? $_POST['name'] : '');
     if ($username === '' || $name === '' || $password === '') echo '<span class="warning">Name, username and a nonempty password are required.</span>';
+    elseif (preg_match('/\A.{1,30}\z/us', $username) !== 1) echo '<span class="warning">Username must be 30 characters or fewer.</span>';
     else {
         try {
         db_exec('INSERT INTO l_user (UserName, password, FullName, email, address, mobile, m_date, userAtho) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [$username, auth_hash_password($password), $name, (is_string($_POST['email'] ?? null) ? $_POST['email'] : ''), (is_string($_POST['addess'] ?? null) ? $_POST['addess'] : ''), (is_string($_POST['mobile'] ?? null) ? $_POST['mobile'] : ''), date('Y-m-d'), 0]);
@@ -49,7 +50,7 @@ if (!$added) form();
             <tr>
               <td>User Name</td>
               <td><label>
-                <input name="username" type="text" id="username" size="30">
+                <input name="username" type="text" id="username" size="30" maxlength="30">
               </label></td>
             </tr>
             <tr>

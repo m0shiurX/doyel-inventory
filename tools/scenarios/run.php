@@ -1,4 +1,6 @@
 <?php
+// Fixture and profiling tools must never run through the public document root.
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 /** Real HTTP write flows. All SQL here reads/asserts disposable fixture state. */
 require __DIR__ . '/../characterize/common.php';
 

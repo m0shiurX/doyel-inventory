@@ -1,4 +1,6 @@
 <?php
+// Fixture and profiling tools must never run through the public document root.
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 /** Read-only, local-only schema/EXPLAIN evidence for S1.1. */
 require __DIR__ . '/characterize/common.php';
 if (in_array($argv[1] ?? '', ['-h', '--help'], true)) {

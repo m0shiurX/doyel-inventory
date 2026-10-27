@@ -1,4 +1,6 @@
 <?php
+// Fixture and profiling tools must never run through the public document root.
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 try {
     if ($argc !== 3) throw new RuntimeException('Usage: compare.sh <golden-dir> <candidate-dir>');
     [$script, $golden, $candidate] = $argv;

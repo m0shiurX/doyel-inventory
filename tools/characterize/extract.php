@@ -1,4 +1,6 @@
 <?php
+// Fixture and profiling tools must never run through the public document root.
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 /** DOM extraction intentionally compares displayed values, not HTML serialization. */
 function characterization_extract(string $html, string $page = ''): string
 {

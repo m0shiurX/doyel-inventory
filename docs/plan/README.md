@@ -97,7 +97,7 @@ Phase 2 can start as soon as Phase 0 is merged. It doesn't wait for Phase 1.
 | S2.7 | Admin and stock snapshots | merged |
 | S2.8 | Product and stock reports | merged |
 | S2.9 | Sales, purchase and cash reports | merged |
-| S2.10 | Integration sweep | todo |
+| S2.10 | Integration sweep | merged |
 | S3.1 | utf8mb4 everywhere | todo |
 | S3.2 | Data clean-up | todo |
 | S3.3 | Column types and defaults | todo |

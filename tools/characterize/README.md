@@ -26,7 +26,9 @@ in reports. Test login defaults to the Phase 0 admin fixture; `DOYEL_TEST_USER`
 and `DOYEL_TEST_PASS` can override it.
 
 `urls.txt` gives neutral label, method, encoded path and optional encoded form
-body. All page/endpoint files are covered; parameterized variants exercise posted
+body. All read-only page/endpoint contracts are covered. `AddSupplierName.php` is an
+AJAX write endpoint: it returns 401 without authentication, is excluded from
+the read-only manifest, and is exercised by scenario 6. Parameterized variants exercise posted
 sale 7559, an unposted sale, a purchase, customer dues, item edit, item ledger and
 saved stock. `Report.php` receives `start_date`, `end_date`, `start_time` and
 `end_time` before **each** report range: full history 2016-01-01 through
@@ -73,13 +75,13 @@ changes; slash-delimited item lookup remains unchanged text.
 
 ## Application PHP inventory
 
-Tooling PHP under `tools/` is not an application route. Mixed read/write pages are
+Tooling PHP under `tools/` is CLI-only: each entry/helper returns HTTP 404 and exits before fixture, profiling, extraction or comparison code can run. Mixed read/write pages are
 classified as pages for their safe GET rendering; S0.4 exercises their writes.
 
 | File | Classification | Coverage/reason |
 |---|---|---|
 | `Accounts.php` | page | Read-only GET/form rendering; writes covered separately by S0.4 |
-| `AddSupplierName.php` | write | S0.4; intentionally excluded from read-only capture |
+| `AddSupplierName.php` | endpoint | Authenticated AJAX write; scenario 6 (excluded from read-only capture) |
 | `CashCollection.php` | page | Read-only GET/form rendering; writes covered separately by S0.4 |
 | `Expenses.php` | page | Read-only GET/form rendering; writes covered separately by S0.4 |
 | `HeadOfAccount.php` | page | Read-only GET/form rendering; writes covered separately by S0.4 |
@@ -91,7 +93,13 @@ classified as pages for their safe GET rendering; S0.4 exercises their writes.
 | `Unpost.php` | page | Read-only GET/form rendering; writes covered separately by S0.4 |
 | `add_item.php` | page | Read-only GET/form rendering; writes covered separately by S0.4 |
 | `add_member.php` | page | Read-only GET/form rendering; writes covered separately by S0.4 |
-| `connect.php` | include | Shared helper; not directly requested |
+| `config.sample.php` | include | Configuration example returning defaults; not an application route |
+| `lib/bootstrap.php` | include | Session/config/helper loader; not an application route |
+| `lib/config.php` | include | Configuration resolver; not an application route |
+| `lib/db.php` | include | Lazy PDO and transaction helpers; not an application route |
+| `lib/auth.php` | include | Authentication helpers; not an application route |
+| `lib/html.php` | include | Escaping and redirects; not an application route |
+| `connect.php` | include | Shared compatibility bootstrap include; not directly requested |
 | `dictionary/PurItem.php` | endpoint | Captured with fixture-resolved input |
 | `dictionary/SalesItem.php` | endpoint | Captured with fixture-resolved input |
 | `dictionary/select.php` | endpoint | Captured with fixture-resolved input |
