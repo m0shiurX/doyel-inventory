@@ -1,9 +1,32 @@
-<?php session_start() ?>
+<?php
+require __DIR__ . '/lib/bootstrap.php';
+require_login();
+function payment_text(array $source, string $key, int $length = 0): string
+{
+    $value = is_string($source[$key] ?? null) ? $source[$key] : '';
+    return $length > 0 ? mb_substr($value, 0, $length, 'UTF-8') : $value;
+}
+$Nickname = payment_text($_GET, 'Name');
+// Aggregate once per source table, but subtract in PHP as the legacy API did.
+// Keeping the SUM strings separate preserves its floating-point display behavior.
+$customers = db_all('SELECT c.MemberID, c.MemberName, c.Nickname, c.address, s.dueTotal, p.paidTotal FROM canteen_customar c LEFT JOIN (SELECT CustomerName, SUM(Total) AS dueTotal FROM canteen_sales GROUP BY CustomerName) s ON s.CustomerName = c.Nickname LEFT JOIN (SELECT Description, SUM(amount) AS paidTotal FROM canteen_collection GROUP BY Description) p ON p.Description = c.Nickname ORDER BY c.Nickname');
+$paymentMessage = '';
+$rawAmount = payment_text($_POST, 'amount');
+if ($Nickname !== '' && is_numeric($rawAmount) && is_finite((float)$rawAmount) && $rawAmount !== '0') {
+    $amount = is_admin() ? (float)$rawAmount : abs((float)$rawAmount);
+    db_exec('INSERT INTO canteen_collection (UserName, Date, Description, HeadOfAccount, amount, Remarks) VALUES (?, ?, ?, ?, ?, ?)', [mb_substr(current_user(), 0, 50, 'UTF-8'), now_sql(), mb_substr($Nickname, 0, 100, 'UTF-8'), 'Collection from Customer', $amount, payment_text($_POST, 'Remarks', 100)]);
+    $paymentMessage = 'Sucsess';
+}
+$member = $Nickname !== '' ? db_one('SELECT MemberName, mobile, address FROM canteen_customar WHERE Nickname = ? ORDER BY MemberID LIMIT 1', [$Nickname]) : null;
+$sales = $Nickname !== '' ? db_all('SELECT SalesID, Date, UserName, Amount, Discount, Total FROM canteen_sales WHERE CustomerName = ? ORDER BY SalesID DESC LIMIT 100', [$Nickname]) : [];
+$due = $Nickname !== '' ? db_one('SELECT (SELECT SUM(Total) FROM canteen_sales WHERE CustomerName = ?) AS dueTotal, (SELECT SUM(amount) FROM canteen_collection WHERE Description = ?) AS paidTotal', [$Nickname, $Nickname]) : null;
+$payments = $Nickname !== '' ? db_all('SELECT PaymentID, Date, UserName, Description, amount, Remarks FROM canteen_collection WHERE Description = ? ORDER BY PaymentID DESC LIMIT 1000', [$Nickname]) : [];
+?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
     <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-		<link href="css/Style.css" rel="stylesheet" type="text/css">
+        <link href="css/Style.css" rel="stylesheet" type="text/css">
     <link href="css/lessframework4.css" rel="stylesheet" type="text/css">
     <script type="text/javascript" src="codes/jquery-1.5.min.js"></script>
     <style type="text/css">
@@ -32,7 +55,7 @@
             visibility: visible;
             margin: 10px auto;
             width:1300px;
-            height: auto; 
+            height: auto;
             position: fixed;
             top:0;
             left:0;
@@ -46,7 +69,7 @@
         }
     </style>
 <div id="main">
-	<?php include("menu.php"); include 'connect.php'; ?>
+    <?php include("menu.php"); ?>
 <div style="margin:20px 0;">
 <div class="report listou">
   <h2><strong>Search Customer &nbsp;</strong><input onKeyPress="return dg(event);" name="MemberName" type="text" id="MemberName"></h2>
@@ -59,45 +82,24 @@
           <tr bgcolor="#f1f1f1">
           <th width="70%"><b>Name of Customer</b></th>
           <th width="20%"><strong>Address</strong></th>
-  			  <th width="5%"><b>Due</b></th>
-  			  <th width="5%"><b>Show</b></th>
-          </tr>         
+              <th width="5%"><b>Due</b></th>
+              <th width="5%"><b>Show</b></th>
+          </tr>
   <?php
-  $amount="";
-  $tAmount="";
-          $sql="SELECT * FROM canteen_customar ORDER BY Nickname" ;
-
-         $rs=mysql_query($sql) or die (mysql_error());
-          if(mysql_num_rows($rs)>0){
-              while ($row=mysql_fetch_object($rs)){
-
-  		print "<tr>" ;
-  		print "<td id='MemberName'>$row->MemberName</td>\n";
-      print "<td>$row->address</td>\n";
-  		$Description=$row->Nickname;
-  		$amount=netTotal($Description);
-  		$tAmount=$tAmount+$amount;
-  		print "<td>$amount</td>\n";
-  		print "<td><a href=\"Payment.php?ID=$row->MemberID&Name=$row->Nickname\">Show</a></td>\n";
-              }
-          }
-
-  function netTotal($Description){
-    $Total = mysql_query("SELECT SUM(Total) as 'dTotal' FROM `canteen_sales` WHERE CustomerName='$Description'");
-    $S=mysql_fetch_object($Total);
-    $dueTotal=$S->dTotal;
-
-    $Total = mysql_query("SELECT SUM(amount) as 'pTotal' FROM `canteen_collection` WHERE Description='$Description'");
-    $S2=mysql_fetch_object($Total);
-    $paidTotal=$S2->pTotal;
-    return $netTotal = $dueTotal-$paidTotal;
+  $tAmount = 0;
+  foreach ($customers as $row) {
+      $amount = (float)($row->dueTotal ?? 0) - (float)($row->paidTotal ?? 0);
+      $tAmount += $amount;
+      print '<tr><td id="MemberName">' . e($row->MemberName) . "</td>\n";
+      print '<td>' . e($row->address) . "</td>\n";
+      print '<td>' . e($amount) . "</td>\n";
+      $url = 'Payment.php?' . http_build_query(['ID' => $row->MemberID, 'Name' => $row->Nickname]);
+      print '<td><a href="' . e($url) . '">Show</a></td>' . "\n";
   }
-
-
   ?>
-  		<tr bgcolor="#f1f1f1">
+        <tr bgcolor="#f1f1f1">
                   <td colspan="2"><b>Total Receivable Amount</b></td>
-                  <td colspan="2"><b><?php echo $tAmount ?></b></td>
+                  <td colspan="2"><b><?= e($tAmount) ?></b></td>
       </tr>
   </table>
 
@@ -108,26 +110,18 @@
 <div style="" class="report statement">
     <h2 class="hidep">Customer Payment <a href="#" style="float: right;" onclick="javascript:window.print()" >Print</a></h2>
 
-	  <table class="treport" width="100%" border="0" cellspacing="0" cellpadding="0">
+      <table class="treport" width="100%" border="0" cellspacing="0" cellpadding="0">
         <tr>
-          <td><b><?php if(!empty($_GET['Name'])){ 
-      $Nickname=$_GET['Name'];
-      $cName = mysql_query("SELECT * FROM `canteen_customar` WHERE Nickname='$Nickname'");
-      $cName=mysql_fetch_object($cName);
-      echo "<strong>Name  &nbsp;&nbsp;&nbsp;:</strong> $cName->MemberName <br />";
-      echo "<strong>Phone &nbsp;&nbsp;&nbsp;:</strong> $cName->mobile <br />";
-      echo "<strong>Address  :</strong> $cName->address <br />";
+          <td><b><?php if ($member !== null) {
+      echo '<strong>Name  &nbsp;&nbsp;&nbsp;:</strong> ' . e($member->MemberName) . ' <br />';
+      echo '<strong>Phone &nbsp;&nbsp;&nbsp;:</strong> ' . e($member->mobile) . ' <br />';
+      echo '<strong>Address  :</strong> ' . e($member->address) . ' <br />';
       } ?>
           </b></td>
         </tr>
       </table>
 <br>
-<?php 
-if(!empty($_GET['Name'])){
-$Nickname=$_GET['Name'];  
-
-$sql=mysql_query("SELECT * FROM canteen_sales WHERE CustomerName='$Nickname' ORDER BY SalesID desc LIMIT 100") ;
-?>
+<?php if ($Nickname !== '') { ?>
     <table class="treport" width="98%" border="0" cellspacing="1" cellpadding="1" class="table1" id="tableGd">
     <h3 class="hide">Sales History</h3>
         <tr>
@@ -139,51 +133,21 @@ $sql=mysql_query("SELECT * FROM canteen_sales WHERE CustomerName='$Nickname' ORD
           <td width="15%">Total</td>
         </tr>
  <?php
- while ($BillInfo = mysql_fetch_object($sql)){
-		print "<tr>" ;
-                $Date=date_create($BillInfo->Date);
-                $Date=date_format($Date, 'd-M-y');
-				
-      echo "<td>$BillInfo->SalesID</td>";
-      echo "<td>$Date</td>";
-      echo "<td>$BillInfo->UserName</td>";
-      echo "<td>$BillInfo->Amount</td>";
-      echo "<td>$BillInfo->Discount</td>";
-		  echo "<td>$BillInfo->Total</td>";
-      echo "</tr>";
-		}
-	?>	
+ foreach ($sales as $BillInfo) {
+      $Date = date_format(date_create($BillInfo->Date), 'd-M-y');
+      echo '<tr><td>' . e($BillInfo->SalesID) . '</td>';
+      echo '<td>' . e($Date) . '</td><td>' . e($BillInfo->UserName) . '</td>';
+      echo '<td>' . e($BillInfo->Amount) . '</td><td>' . e($BillInfo->Discount) . '</td><td>' . e($BillInfo->Total) . '</td></tr>';
+ }
+ ?>
     </table><br>
-<?php	
-
-if(!empty($_POST['amount'])){
-date_default_timezone_set('Asia/Dacca');
-$Remarks=$_POST['Remarks'];
-$UserName=$_SESSION['Username'];
-$date = date("Y-m-d, H-i-s");
-
-//Admin can store negetive value
-if ($_SESSION['admin']==1) {
-  $Amount=$_POST['amount'];
-} else {
-  $Amount=abs($_POST['amount']);
-}
-
-$query = mysql_query("INSERT INTO canteen_collection (UserName, Date, Description, HeadOfAccount, amount, Remarks)
-            VALUES ('$UserName','$date','$Nickname','Collection from Customer','$Amount','$Remarks')");
-if($query){
-echo 'Sucsess';
-}else{echo "Error";}
-}
-?>
-
 <?php
-$Description=$_GET['Name'];
-$amount=netTotal($Description);
-echo ' Total Due '.$amount.' Taka';
+if ($paymentMessage !== '') echo e($paymentMessage);
+$amount = (float)($due->dueTotal ?? 0) - (float)($due->paidTotal ?? 0);
+echo ' Total Due ' . e($amount) . ' Taka';
 ?>
 
-	  <br><br>
+  <br><br>
 <form name="form1" method="post" action="" class="hidep">
     <table width="100%" border="0" cellspacing="1" cellpadding="1" class="table1">
       <tr>
@@ -192,7 +156,7 @@ echo ' Total Due '.$amount.' Taka';
         <td width="10%">Remarks</td>
         <td width="30%"><input name="Remarks" type="text" id="Remarks" size="20"></td>
         <td width="15%"><input type="submit" name="Submit" value="Paid"></td>
-        <td width="15%"><a href="payment.php">Refrsh</a></td>
+        <td width="15%"><a href="Payment.php">Refrsh</a></td>
       </tr>
     </table>
 </form>
@@ -211,20 +175,15 @@ echo ' Total Due '.$amount.' Taka';
             </tr>
 <?php
 
-$qry=mysql_query("SELECT * FROM canteen_collection WHERE Description = '$Nickname'  ORDER BY PaymentID desc LIMIT 1000") ;
-while ($Detail = mysql_fetch_object($qry)){
-
-		print "<tr>" ;
-    $Date=date_create($Detail->Date);
-    $Date=date_format($Date, 'd-M-y');
-    print "<td>$Detail->PaymentID</td>\n";
-    print "<td>$Date</td>\n";
-	  print "<td>$Detail->UserName</td>\n";
-		print "<td class=\"hide\">$Detail->Description</td>\n";
-		print "<td>$Detail->amount</td>\n";
-    print "<td>$Detail->Remarks</td>";
-		print "<td class=\"hidep\"><a href=\"remove_payment.php?d=$Detail->PaymentID\">Delete</a></td>\n</tr>\n";
-
+foreach ($payments as $Detail) {
+    $Date = date_format(date_create($Detail->Date), 'd-M-y');
+    print '<tr><td>' . e($Detail->PaymentID) . "</td>\n";
+    print '<td>' . e($Date) . "</td>\n";
+    print '<td>' . e($Detail->UserName) . "</td>\n";
+    print '<td class="hide">' . e($Detail->Description) . "</td>\n";
+    print '<td>' . e($Detail->amount) . "</td>\n";
+    print '<td>' . e($Detail->Remarks) . '</td>';
+    print '<td class="hidep"><a href="remove_payment.php?d=' . e(urlencode($Detail->PaymentID)) . '">Delete</a></td>' . "\n</tr>\n";
 }
 ?>
 </table>
@@ -233,8 +192,8 @@ while ($Detail = mysql_fetch_object($qry)){
 }
 
 ?>
-	</div>	
-</div>	
+    </div>
+</div>
   <?php include 'footer.php'; ?>
 </div>
 
@@ -244,7 +203,7 @@ while ($Detail = mysql_fetch_object($qry)){
     grid = $('#userGrid');
 
     // handle search fields of members key up event
-    $('#MemberName').keyup(function(e) { 
+    $('#MemberName').keyup(function(e) {
       text = $(this).val(); // grab search term
 
       if(text.length > 1) {
@@ -257,11 +216,11 @@ while ($Detail = mysql_fetch_object($qry)){
             $(this).show(); // show matching row
         });
       }
-      else 
+      else
         grid.find('tr').show(); // if no matching name is found, show all rows
     });
-    
-  }); 
+
+  });
 </script>
     </body>
 </html>

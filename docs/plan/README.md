@@ -93,7 +93,7 @@ Phase 2 can start as soon as Phase 0 is merged. It doesn't wait for Phase 1.
 | S2.3 | Sales flow | merged |
 | S2.4 | Purchase and suppliers | merged |
 | S2.5 | Items and customers | merged |
-| S2.6 | Cash, payments, accounts | todo |
+| S2.6 | Cash, payments, accounts | merged |
 | S2.7 | Admin and stock snapshots | merged |
 | S2.8 | Product and stock reports | todo |
 | S2.9 | Sales, purchase and cash reports | todo |

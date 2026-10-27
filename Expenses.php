@@ -1,38 +1,45 @@
-<?php session_start() ?>
+<?php
+require __DIR__ . '/lib/bootstrap.php';
+require_login();
+function expenses_text(array $source, string $key, int $length = 0): string
+{
+    $value = is_string($source[$key] ?? null) ? $source[$key] : '';
+    return $length > 0 ? mb_substr($value, 0, $length, 'UTF-8') : $value;
+}
+$message = '';
+$rawAmount = expenses_text($_POST, 'amount');
+$description = expenses_text($_POST, 'Description', 100);
+$head = expenses_text($_POST, 'HeadOfAccount', 50);
+if (is_numeric($rawAmount) && is_finite((float)$rawAmount) && $rawAmount !== '0' && $description !== '' && $head !== '' && $head !== 'Head Of Accounts') {
+    db_exec('INSERT INTO canteen_expenses (Date, UserName, Description, HeadOfAccount, amount, Remarks) VALUES (?, ?, ?, ?, ?, ?)', [now_sql(), mb_substr(current_user(), 0, 30, 'UTF-8'), $description, $head, (float)$rawAmount, expenses_text($_POST, 'Remarks', 20)]);
+    $message = 'Expenses Sucess';
+}
+$deleteMessage = '';
+$id = filter_var($_GET['d'] ?? null, FILTER_VALIDATE_INT);
+if (is_admin() && $id !== false && $id > 0) {
+    db_exec('DELETE FROM canteen_expenses WHERE PaymentID = ?', [$id]);
+    $deleteMessage = 'Expanse no ' . $id . ' is Removed.';
+}
+$heads = db_all('SELECT HeadOfAccount FROM canteen_ac_head WHERE conCode = ? ORDER BY headID', ['Expense']);
+// Date's secondary index returned tied rows in descending primary-key order.
+$rows = is_admin()
+    ? db_all('SELECT Date, UserName, Description, amount, Remarks, PaymentID FROM canteen_expenses ORDER BY Date DESC, PaymentID DESC LIMIT 30')
+    : db_all('SELECT Date, UserName, Description, amount, Remarks, PaymentID FROM canteen_expenses WHERE Remarks <> ? ORDER BY Date DESC, PaymentID DESC LIMIT 30', ['Personal']);
+?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-		<link href="css/Style.css" rel="stylesheet" type="text/css">
+        <link href="css/Style.css" rel="stylesheet" type="text/css">
     <link href="css/lessframework4.css" rel="stylesheet" type="text/css">
-		<div align="center"><div id="main">
+        <div align="center"><div id="main">
 
-<?php include("menu.php");
-include 'connect.php'; ?>
+<?php include("menu.php"); ?>
 
 <h2>Cash Expanses</h2>
 
 <div style=" min-height:450px;display:block; margin-bottom:30px;">
-<?php
-if(!empty($_POST['amount']) && !empty($_POST['Description']) && $_POST['HeadOfAccount'] != 'Head Of Accounts'){
-
-$Description=$_POST['Description'];
-$HeadOfAccount=$_POST['HeadOfAccount'];
-$amount= $_POST['amount'];
-date_default_timezone_set('Asia/Dacca');
-$date = date("Y-m-d, H-i-s");
-$UserName=$_SESSION['Username'];
-$Remarks=$_POST['Remarks'];
-
-$query = mysql_query("INSERT INTO canteen_expenses (Date, UserName, Description, HeadOfAccount, amount, Remarks)
-            VALUES ('$date','$UserName','$Description','$HeadOfAccount','$amount','$Remarks')");
-if($query){
-echo "Expenses Sucess";
-}else{echo "Error";}
-
-}
-
- ?>
+<?php if ($message !== '') echo e($message); ?>
 
 
 <form name="form1" method="post" action="Expenses.php">
@@ -45,12 +52,7 @@ echo "Expenses Sucess";
         <td width="11%">Accounts Head</td>
         <td width="41%"><select name="HeadOfAccount" id="HeadOfAccount">
         <option>Head Of Accounts</option>
-		<?php
-		$hea=mysql_query("SELECT HeadOfAccount FROM canteen_ac_head WHERE conCode='Expense'");
-		while ($heal=mysql_fetch_object($hea)){
-			echo "<option>$heal->HeadOfAccount</option>";
-		}
-        ?>
+        <?php foreach ($heads as $headRow) echo '<option>' . e($headRow->HeadOfAccount) . '</option>'; ?>
         </select></td>
       </tr>
       <tr>
@@ -63,47 +65,32 @@ echo "Expenses Sucess";
   </table>
       </fieldset>
 </form>
-  
+
   <div style="max-height:400px; overflow:auto; margin-bottom:10px;">
-	<table id="tableGd" width="98%" border="0" cellspacing="1" cellpadding="1">
+    <table id="tableGd" width="98%" border="0" cellspacing="1" cellpadding="1">
               <tr bgcolor="#f1f1f1">
               <td width="16%"><b>Date</b></td>
               <td width="10%"><b>Paid By</b></td>
-			  <td width="36%"><b>Description</b></td>
+              <td width="36%"><b>Description</b></td>
               <td width="9%"><b>Amount</b></td>
-			  <td width="21%"><b>Remarks</b></td>
-			  <td width="8%"><b>Action</b></td>
+              <td width="21%"><b>Remarks</b></td>
+              <td width="8%"><b>Action</b></td>
             </tr>
  <?php
+if ($deleteMessage !== '') echo '<span class="warning">' . e($deleteMessage) . '</span>';
+foreach ($rows as $Paid) {
+    $Date = date_format(date_create($Paid->Date), 'd-M-y h:i A');
+    print '<tr><td>' . e($Date) . "</td>\n";
+    print '<td>' . e($Paid->UserName) . "</td>\n";
+    print '<td>' . e($Paid->Description) . "</td>\n";
+    print '<td>' . e($Paid->amount) . "</td>\n";
+    print '<td>' . e($Paid->Remarks) . "</td>\n";
+    print '<td><a href="Expenses.php?d=' . e(urlencode($Paid->PaymentID)) . '">Delete</a></td></tr>' . "\n";
+}
+?>
 
- if ($_SESSION['admin']==1) {
-   if(!empty($_GET['d'])){
-   $p=$_GET['d'];
-   $deleted= mysql_query("DELETE FROM canteen_expenses WHERE PaymentID='$p'");
-   if ($deleted){echo "<span class=\"warning\">Expanse no $p is Removed.</span>";} }
-
-   $sql=mysql_query("SELECT * FROM canteen_expenses ORDER BY Date DESC LIMIT 30");
-   
-  } else{
-    $sql=mysql_query("SELECT * FROM canteen_expenses WHERE Remarks!='Personal' ORDER BY Date DESC LIMIT 30");
-  }
-
-        while ($Paid=mysql_fetch_object($sql)){
-		print '<tr>' ;
-		$Date=date_create($Paid->Date);
-                $Date=date_format($Date, 'd-M-y h:i A');
-		print "<td>$Date</td>\n";
-		print "<td>$Paid->UserName</td>\n";
-		print "<td>$Paid->Description</td>\n";
-		print "<td>$Paid->amount</td>\n";
-		print "<td>$Paid->Remarks</td>\n";
-		print "<td><a href=\"Expenses.php?d=$Paid->PaymentID\">Delete</a></td></tr>\n";
-	
- }
- ?>
- 
  </table>
-	</div> 
+    </div>
 
 
 </div>
