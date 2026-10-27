@@ -2,7 +2,7 @@
 
 The audit of the legacy code and of the dump taken 2026-10-25. Slices cite findings by ID (`F3`, `P2`, `S1`, ...). A slice that resolves a finding says so in its **Done when**.
 
-Data size, for scale: 13 tables, ~260k rows, 22 MB. Largest: `canteen_stock_detail` 190k, `canteen_sales_detail` 27k, `canteen_purchase_detail` 12k, `canteen_expenses` 10.5k, `canteen_collection` 6.9k, `canteen_sales` 5.3k, `canteen_purchase` 2.2k, `canteen_item` 868, `canteen_customar` 348. Text data is ASCII (Banglish), so charset conversion carries no double-encoding risk.
+Data size, for scale: 13 tables, ~260k rows, 22 MB. Largest: `canteen_stock_detail` 190k, `canteen_sales_detail` 27k, `canteen_purchase_detail` 12k, `canteen_expenses` 10.5k, `canteen_collection` 6.9k, `canteen_sales` 5.3k, `canteen_purchase` 2.2k, `canteen_item` 868, `canteen_customar` 348. The initial audit classified text as ASCII (Banglish). **S3.1 correction, 2026-10-28:** sales Note ID 6390 contains valid utf8mb3 Bengali text; its utf8mb4 round trip is byte-exact. Original latin1 table text remains ASCII. Charset conversion must preserve this note and verify losslessness rather than assume every text field is ASCII.
 
 ## Platform (F)
 

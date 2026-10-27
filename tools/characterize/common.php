@@ -29,7 +29,7 @@ function characterization_variables(): array
         || !preg_match('/^(software|doyel_[A-Za-z0-9_]+)$/D', $name)) {
         throw new RuntimeException('Resolver only supports isolated local fixture databases');
     }
-    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$name;charset=utf8", getenv('DOYEL_DB_USER') ?: 'root', getenv('DOYEL_DB_PASS') ?: 'doyel-local', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$name;charset=utf8mb4", getenv('DOYEL_DB_USER') ?: 'root', getenv('DOYEL_DB_PASS') ?: 'doyel-local', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     $scalar = static fn(string $sql) => $pdo->query($sql)->fetchColumn();
     $customer = $pdo->query('SELECT c.MemberID,c.Nickname FROM canteen_customar c WHERE EXISTS (SELECT 1 FROM canteen_collection p WHERE p.Description=c.Nickname) AND EXISTS (SELECT 1 FROM canteen_sales s WHERE s.CustomerName=c.Nickname) ORDER BY c.MemberID LIMIT 1')->fetch(PDO::FETCH_ASSOC);
     $item = $pdo->query('SELECT i.ItemID,i.ItemName FROM canteen_item i WHERE EXISTS (SELECT 1 FROM canteen_sales_detail d WHERE d.ItemID=i.ItemID) ORDER BY i.ItemID LIMIT 1')->fetch(PDO::FETCH_ASSOC);

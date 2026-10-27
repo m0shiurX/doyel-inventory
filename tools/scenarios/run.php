@@ -16,7 +16,7 @@ final class Scenario
         $port = $target === 'legacy' ? 33057 : 33084;
         $dbname = getenv('DOYEL_DB_NAME') ?: 'software';
         if (!preg_match('/^(software|doyel_[A-Za-z0-9_]+)$/D', $dbname)) throw new RuntimeException('Invalid fixture database name');
-        $this->db = new PDO("mysql:host=127.0.0.1;port=$port;dbname=$dbname;charset=utf8", 'root', 'doyel-local', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_STRINGIFY_FETCHES => true]);
+        $this->db = new PDO("mysql:host=127.0.0.1;port=$port;dbname=$dbname;charset=utf8mb4", 'root', 'doyel-local', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_STRINGIFY_FETCHES => true]);
         $this->cookie = $out . '/' . $name . '.cookies.private';
     }
     public function rows(string $sql, array $params = []): array

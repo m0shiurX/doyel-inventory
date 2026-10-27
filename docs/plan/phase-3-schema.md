@@ -24,7 +24,7 @@ The Phase 2 code keeps working throughout.
 **Owns:** `db/migrations/002_utf8mb4.*`, `lib/db.php` (charset line only, if it needs a change)
 **Resolves:** P7
 
-- `ALTER TABLE ... CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci` for all 13 tables, plus `ALTER DATABASE`. The audit found ASCII-only text (findings.md, header), so the conversion is lossless. Re-check that before converting: `SELECT COUNT(*) WHERE col <> CONVERT(col USING ascii)` for each text column, and stop if any count is non-zero.
+- `ALTER TABLE ... CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci` for all 13 tables, plus `ALTER DATABASE`. Report non-ASCII counts/IDs before conversion. The initial ASCII audit missed valid UTF-8 Bengali text in sales Note ID 6390; S3.1 verified its utf8mb3 → utf8mb4 → utf8mb3 byte-exact round trip. Preserve that text. Original UTF-8 columns may contain Unicode only when a byte-exact round trip proves conversion lossless; original latin1 text remains ASCII-required to avoid guessing its encoding. Stop on any unproven conversion. Down migrations must similarly refuse characters not representable in the original charset, rather than replacing or repairing data.
 - Index key length: the `UNIQUE` keys on `VARCHAR(80)` stay well under 3072 bytes. Confirm for every index.
 - Collation change from `utf8_unicode_ci` to `utf8mb4_unicode_ci`: equality and ordering stay the same for ASCII. Characterization confirms it.
 

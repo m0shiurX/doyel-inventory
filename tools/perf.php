@@ -122,7 +122,7 @@ try {
         $process = proc_open([__DIR__ . '/db-reset.sh', $target, $database], $descriptors, $pipes);
         if (!is_resource($process) || proc_close($process) !== 0) throw new RuntimeException('Snapshot fixture reset failed; inspect private reset logs');
     }
-    $pdo = new PDO('mysql:host=127.0.0.1;port=' . ($target === 'legacy' ? '33057' : '33084') . ';dbname=' . $database . ';charset=utf8', 'root', 'doyel-local', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => true]);
+    $pdo = new PDO('mysql:host=127.0.0.1;port=' . ($target === 'legacy' ? '33057' : '33084') . ';dbname=' . $database . ';charset=utf8mb4', 'root', 'doyel-local', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => true]);
     $variables = characterization_variables();
     $requests = characterization_requests();
     $scope = getenv('DOYEL_PERF_LABELS') ?: '';
