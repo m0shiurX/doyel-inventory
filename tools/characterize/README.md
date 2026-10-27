@@ -160,3 +160,14 @@ contains only categories and relative source locations; private `_errors.txt`
 retains complete diagnostic text. Removing the legacy diagnostic text from the
 business-text extraction is explicit; modern acceptance still requires zero
 PHP diagnostics. Fixtures and captures remain outside git.
+
+## PHP lint and intermediate foundation session
+
+`tools/lint.sh <file.php> [...]` runs PHP syntax checks and stops on failure.
+During S2.1, login is not ported yet. A private CLI harness can create a fixture
+session and Netscape cookie jar under `DOYEL_FIXTURES`; set
+`DOYEL_CAPTURE_COOKIE_JAR` to that private file with an explicit
+`DOYEL_CAPTURE_LABELS=dashboard,logout`. This opt-in works only for local modern
+ports 8100–8199 and excludes the login label. It copies the jar to the private
+capture directory and never adds a test login HTTP endpoint. Normal capture
+continues authenticating through the actual login form; use it after S2.2.

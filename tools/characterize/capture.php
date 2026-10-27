@@ -34,11 +34,23 @@ try {
     $selected = $scope === '' ? array_keys($requests) : explode(',', $scope);
     if (array_diff($selected, array_keys($requests)) || count($selected) !== count(array_unique($selected))) throw new RuntimeException('Unknown or duplicate requested capture label');
     $wanted = static fn(string $label): bool => in_array($label, $selected, true);
-    $request = characterization_resolve($requests['login'], $variables);
-    $response = characterization_http($base, $request, $cookies);
-    if ($wanted('login')) $record('login', $request, $response);
-    $login = characterization_http($base, ['label' => 'authenticate', 'method' => 'POST', 'path' => '/login.php', 'body' => http_build_query(['username' => getenv('DOYEL_TEST_USER') ?: 'rayhan', 'password' => getenv('DOYEL_TEST_PASS') ?: 'admin-test'])], $cookies);
-    if ($login['status'] !== 302) throw new RuntimeException('Fixture authentication did not redirect; check fixture credentials');
+    $fixtureJar = getenv('DOYEL_CAPTURE_COOKIE_JAR') ?: '';
+    if ($fixtureJar !== '') {
+        // Intermediate S2.1 only: a CLI-created private fixture session permits
+        // owned-page checks before S2.2 ports login. Never an app auth endpoint.
+        $fixtureJar = realpath($fixtureJar);
+        if (PHP_SAPI !== 'cli' || !$fixtureJar || !is_file($fixtureJar)
+            || !str_starts_with($fixtureJar, $fixtures . '/')
+            || !preg_match('~^http://(?:127\.0\.0\.1|localhost):81[0-9]{2}$~D', $base)
+            || $scope === '' || $wanted('login')) throw new RuntimeException('Private fixture-cookie mode requires explicit modern owned labels excluding login');
+        if (!copy($fixtureJar, $cookies)) throw new RuntimeException('Cannot copy private fixture cookie jar');
+    } else {
+        $request = characterization_resolve($requests['login'], $variables);
+        $response = characterization_http($base, $request, $cookies);
+        if ($wanted('login')) $record('login', $request, $response);
+        $login = characterization_http($base, ['label' => 'authenticate', 'method' => 'POST', 'path' => '/login.php', 'body' => http_build_query(['username' => getenv('DOYEL_TEST_USER') ?: 'rayhan', 'password' => getenv('DOYEL_TEST_PASS') ?: 'admin-test'])], $cookies);
+        if ($login['status'] !== 302) throw new RuntimeException('Fixture authentication did not redirect; check fixture credentials');
+    }
     foreach ($requests as $label => $request) {
         if (!$wanted($label) || $label === 'login' || $label === 'logout' || str_starts_with($label, 'report-') && $label !== 'report-controls') continue;
         $request = characterization_resolve($request, $variables);

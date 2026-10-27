@@ -1,31 +1,12 @@
 <?php
-function redirectTo($url)
-{
-	if (!headers_sent()) {
-		header('location:'.$url);
-		exit;
-	} else {
-		print '<script type="text/javascript">';
-		print 'window.location.href="'.$url.'";';
-		print '</script>';
-		exit;
-	}
-	
-}
-
-if(empty($_SESSION['Username']))
-{
-	redirectTo('login.php');
-}
-
-
+require_once __DIR__ . '/lib/bootstrap.php';
+require_login();
 ?>
-
-<title>Doyel Eng. | <?php echo $_SESSION['Username'] ; ?></title>
+<title>Doyel Eng. | <?= e(current_user()) ?></title>
 </head>
 <body>
 <div align="center" class="menu">
-<a href="index.php">Dashboard</a> 
+<a href="index.php">Dashboard</a>
 <a href="Sales.php">Sales</a>
 <a href="purchase.php">Add to Stock</a>
 <a href="list_of_item.php">Product List</a>

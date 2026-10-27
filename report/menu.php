@@ -4,8 +4,8 @@
  * Function to convert a number to a the string literal for the number
  */
 function getStringOfAmount($num) {
+  global $ones, $tens, $triplets, $count;
   $count = 0;
-  global $ones, $tens, $triplets;
   $ones = array(
     '',
     ' One',
@@ -66,7 +66,7 @@ function commonloop($val, $str1 = '', $str2 = '') {
   if ($val == 0)
     $string .= $ones[$val];
   else if ($val < 20)
-    $string .= $str1.$ones[$val] . $str2;  
+    $string .= $str1.$ones[$val] . $str2;
   else
     $string .= $str1 . $tens[(int) ($val / 10)] . $ones[$val % 10] . $str2;
   return $string;
@@ -92,14 +92,14 @@ function convertNum($num) {
 function convertTri($num, $tri) {
   global $ones, $tens, $triplets, $count;
   $test = $num;
-  $count++;
+  $count = ($count ?? 0) + 1;
   // chunk the number, ...rxyy
   // init the output string
   $str = '';
   // to display hundred & digits
   if ($count == 1) {
     $r = (int) ($num / 1000);
-    $x = ($num / 100) % 10;
+    $x = intdiv($num, 100) % 10;
     $y = $num % 100;
     // do hundreds
     if ($x > 0) {
@@ -119,7 +119,7 @@ function convertTri($num, $tri) {
   // To display lakh and thousands
   else if($count == 2) {
     $r = (int) ($num / 10000);
-    $x = ($num / 100) % 100;
+    $x = intdiv($num, 100) % 100;
     $y = $num % 100;
     $str .= commonloop($x, '', ' Lakh ');
     $str .= commonloop($y);
@@ -129,7 +129,7 @@ function convertTri($num, $tri) {
   // to display till hundred crore
   else if($count == 3) {
     $r = (int) ($num / 1000);
-    $x = ($num / 100) % 10;
+    $x = intdiv($num, 100) % 10;
     $y = $num % 100;
     // do hundreds
     if ($x > 0) {

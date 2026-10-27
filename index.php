@@ -1,4 +1,7 @@
-<?php session_start() ?>
+<?php
+require __DIR__ . '/lib/bootstrap.php';
+require_login();
+?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
@@ -20,20 +23,11 @@
       <th>Available</th>
     </tr>
     <?php
-      include 'connect.php';
-      $sql="SELECT * FROM `canteen_item` WHERE D='0' and Qnty<MinimumQuantity";
-      $sl=1;
-      $rs=mysql_query($sql) or die (mysql_error());
-      if(mysql_num_rows($rs)>0){
-        while ($row=mysql_fetch_object($rs)){
-          print "<tr>" ;
-          print "<td>$sl</td>\n";
-          // print "<td>$row->ItemID</td>\n";
-          print "<td>$row->ItemName</td>\n";
-          print "<td>$row->Qnty</td>\n";
-          print "</tr>\n";
-          $sl++;
-        }
+      $sl = 1;
+      foreach (db_all("SELECT ItemID, ItemName, Qnty FROM canteen_item WHERE D = ? AND Qnty < MinimumQuantity ORDER BY ItemID", [0]) as $row) {
+          print '<tr><td>' . $sl++ . '</td>';
+          print '<td>' . e($row->ItemName) . '</td>';
+          print '<td>' . e($row->Qnty) . '</td></tr>';
       }
     ?>
   </table>
@@ -49,19 +43,11 @@
     </tr>
 
     <?php
-      $sql="SELECT * FROM `canteen_item` WHERE D='0' and Qnty>MaximumQuantity";
-      $sl=1;
-      $rs=mysql_query($sql) or die (mysql_error());
-      if(mysql_num_rows($rs)>0){
-        while ($row=mysql_fetch_object($rs)){
-          print "<tr>" ;
-          print "<td>$sl</td>\n";
-          // print "<td>$row->ItemID</td>\n";
-          print "<td>$row->ItemName</td>\n";
-          print "<td>$row->Qnty</td>\n";
-          print "</tr>\n";
-          $sl++;
-        }
+      $sl = 1;
+      foreach (db_all("SELECT ItemID, ItemName, Qnty FROM canteen_item WHERE D = ? AND Qnty > MaximumQuantity ORDER BY ItemID", [0]) as $row) {
+          print '<tr><td>' . $sl++ . '</td>';
+          print '<td>' . e($row->ItemName) . '</td>';
+          print '<td>' . e($row->Qnty) . '</td></tr>';
       }
     ?>
   </table>
