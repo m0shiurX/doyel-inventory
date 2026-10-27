@@ -58,7 +58,7 @@ Open questions: ...
 | Q2 | Hard-delete bills and their detail lines; clean up existing orphan lines. No soft delete. Stock reversal is included in the planned D3 fix. | S2.7 reverses the bill's stock effect and deletes lines and header in one transaction. S3.2 deletes historical orphans without guessing a stock correction from missing headers. S3.4 uses RESTRICT with explicit child deletion. |
 | Q3 | Keep the latest duplicate user: IDs **27** and **29** survive; remove IDs **26** and **28**. | S3.4 reports references before deletion, preserves historical bill attribution, then adds the unique username constraint. “Latest” means the higher ID in each identified pair. |
 | Q4 | Keep two years of stock snapshots; delete snapshots strictly older than the cutoff. | S3.2 uses a fixed Asia/Dhaka cutoff recorded for the run; deletes snapshot detail rows and headers together. No monthly archive of older snapshots. Transaction history is unaffected. |
-| Q5 | History purge approved, including the newly made commit. **Pending execution**, before any remote push. | S0.1 preserves local fixtures outside git, prepares a private recovery copy, then purges SQL dumps from all relevant refs and verifies the result. Rewriting history changes commit IDs. |
+| Q5 | History purge approved, including the newly made commit. **Executed and verified in S0.1**, before any remote push. | S0.1 preserves local fixtures outside git, prepares a private recovery copy, then purges SQL dumps from all relevant refs and verifies the result. Rewriting history changes commit IDs. |
 | Q6 | Delete the dead pages and unused backup directory. | S2.7 deletes the unlinked `updateClosingBalance.php` pair; S2.8 deletes `report/ledger.php` and `report/index.php`; S2.10 removes `unsused_Backups/` after preserving fixture dumps outside git and verifies references. S4.2 provides the replacement backup download. |
 
 Preparation requested by the owner removes the Q6 dead files before Phase 0. Later slices verify their absence and references rather than porting or deleting them again. The legacy baseline therefore excludes those dead pages.
@@ -81,7 +81,7 @@ Phase 2 can start as soon as Phase 0 is merged. It doesn't wait for Phase 1.
 
 | Slice | Title | Status |
 |-------|-------|--------|
-| S0.1 | Repo hygiene | todo |
+| S0.1 | Repo hygiene | merged |
 | S0.2 | Local stacks + fixture DB | todo |
 | S0.3 | Read-only characterization | todo |
 | S0.4 | Write-flow scenarios | todo |

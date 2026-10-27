@@ -60,6 +60,10 @@ git log --all --format= --name-only -- '*.sql' '*.sql.zip' '*.sql.gz' > "$recove
 git remote -v > "$recovery/remotes-before.txt"
 shasum -a 256 "$fixtures/dump.sql" > "$recovery/fixture-before.sha256"
 cp .git/config "$recovery/git-config-before"
+# A bundle skips direct tree refs used by Codex's local diff snapshots. Preserve
+# the object database too, so those app refs remain privately recoverable.
+tar -czf "$recovery/git-before.tar.gz" .git
+tar -tzf "$recovery/git-before.tar.gz" > "$recovery/git-archive-files.txt"
 git bundle create "$recovery/history-before.bundle" --all
 git bundle verify "$recovery/history-before.bundle" > "$recovery/bundle-verification.txt" 2>&1
 # Preserve ignored/untracked local data too; graph cache is regenerable.
@@ -72,13 +76,30 @@ manifest() {
     done
 }
 manifest > "$recovery/source-before.sha256"
+# Sanitize direct tree refs too: filter-repo skips non-commit app snapshot refs.
+# Use a separate temporary index; do not disturb the real working index.
+git for-each-ref --format='%(refname) %(objectname) %(objecttype)' > "$recovery/ref-types-before.txt"
+while IFS=' ' read -r ref oid kind; do
+    [ "$kind" = tree ] || continue
+    tree_index="$recovery/tree-index"
+    GIT_INDEX_FILE="$tree_index" git read-tree "$oid"
+    git ls-tree -r -z --name-only "$oid" | while IFS= read -r -d '' path; do
+        case "$path" in
+            *.sql|*.sql.zip|*.sql.gz)
+                GIT_INDEX_FILE="$tree_index" git update-index --force-remove -- "$path" ;;
+        esac
+    done
+    new_tree=$(GIT_INDEX_FILE="$tree_index" git write-tree)
+    git update-ref "$ref" "$new_tree" "$oid"
+    rm "$tree_index"
+done < "$recovery/ref-types-before.txt"
 # This checkout is intentionally non-fresh. --force is used only AFTER the clean
 # tree, single-worktree, verified bundle/archive and source-manifest safeguards.
 git filter-repo --force --path-glob '*.sql' --path-glob '*.sql.zip' --path-glob '*.sql.gz' --invert-paths
 manifest > "$recovery/source-after.sha256"
 cmp "$recovery/source-before.sha256" "$recovery/source-after.sha256" || fail 'Source checksums changed; inspect the private recovery copy'
 shasum -a 256 -c "$recovery/fixture-before.sha256"
-[ -z "$(git log --all --format= --name-only -- '*.sql' '*.sql.zip' '*.sql.gz')" ] || fail 'Dump paths remain reachable'
+[ -z "$(git rev-list --objects --all | sed -n '/\.sql$/p; /\.sql\.zip$/p; /\.sql\.gz$/p')" ] || fail 'Dump paths remain reachable, including non-commit refs'
 [ -z "$(git ls-files '*.sql' '*.sql.zip' '*.sql.gz')" ] || fail 'Dump paths remain tracked'
 [ -z "$(git status --porcelain=v1 --untracked-files=all)" ] || fail 'Working tree changed unexpectedly'
 git rev-parse HEAD > "$recovery/head-after.txt"
