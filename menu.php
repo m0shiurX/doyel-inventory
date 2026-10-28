@@ -14,5 +14,5 @@ require_login();
 <a href="Payment.php">Payment</a>
 <a href="Report.php">Report</a>
 <a href="Accounts.php">Accounts</a>
-<a href="logout.php">Logout</a>
+<form id="logout_form" method="post" action="<?= e(app_relative_path('logout.php')) ?>" hidden><?php csrf_field(); ?></form><button type="submit" form="logout_form" class="battun">Logout</button>
 </div>

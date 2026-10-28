@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login();
+csrf_check_post();
 function sales_text(array $source, string $key): string
 {
     return is_string($source[$key] ?? null) ? $source[$key] : '';
@@ -10,8 +11,14 @@ function sales_id(array $source, string $key): int
     $value = sales_text($source, $key);
     return ctype_digit($value) && strlen($value) <= 10 && (float)$value <= 2147483647 ? (int)$value : 0;
 }
+$action = mutation_action([
+    'new' => sales_text($_POST, 'NBill') === 'add_new',
+    'post' => sales_text($_POST, 'hPost') !== '',
+    'remove' => sales_text($_POST, 'id') !== '',
+    'add' => sales_text($_POST, 'Item') !== '',
+]);
 $SalesID = 0;
-if (sales_text($_GET, 'NBill') === 'add_new') {
+if ($action === 'new') {
     $SalesID = db_tx(function (): int {
         // The user row serializes simultaneous Add New requests for one user.
         db_one('SELECT user_id FROM l_user WHERE UserName = ? ORDER BY user_id LIMIT 1 FOR UPDATE', [current_user()]);
@@ -22,23 +29,24 @@ if (sales_text($_GET, 'NBill') === 'add_new') {
         return (int)db_insert_id();
     });
 }
+if (sales_id($_POST, 'Bill') > 0) $SalesID = sales_id($_POST, 'Bill');
 if (sales_id($_GET, 'Bill') > 0) $SalesID = sales_id($_GET, 'Bill');
 if (sales_id($_POST, 'bill_no') > 0) $SalesID = sales_id($_POST, 'bill_no');
-if ($SalesID > 0 && sales_text($_GET, 'hPost') !== '') {
+if ($SalesID > 0 && $action === 'post') {
     db_tx(function () use ($SalesID): void {
         $parent = db_one('SELECT Post, Credit FROM canteen_sales WHERE SalesID = ? FOR UPDATE', [$SalesID]);
         if ($parent === null || (int)$parent->Post !== 0 || (int)$parent->Credit === 2) return;
         // Header totals are derived from stored lines, never the readonly form fields.
-        $discount = input_decimal(sales_text($_GET, 'discount'));
+        $discount = input_decimal(sales_text($_POST, 'discount'));
         $totals = db_one('SELECT COALESCE(SUM(Amt), 0) AS Amount, COALESCE(SUM(Amt), 0) - CAST(? AS DECIMAL(14,2)) AS Total FROM canteen_sales_detail WHERE SalesID = ?', [$discount, $SalesID]);
         $amount = input_decimal($totals->Amount);
         $total = input_decimal($totals->Total);
-        $nickname = sales_text($_GET, 'Nickname');
-        db_exec('UPDATE canteen_sales SET CustomerName = ?, Amount = ?, Discount = ?, Total = ?, Post = ?, Note = ?, Credit = ? WHERE SalesID = ?', [$nickname, $amount, $discount, $total, 1, sales_text($_GET, 'Note'), $nickname === 'Select Member' ? 0 : 1, $SalesID]);
+        $nickname = sales_text($_POST, 'Nickname');
+        db_exec('UPDATE canteen_sales SET CustomerName = ?, Amount = ?, Discount = ?, Total = ?, Post = ?, Note = ?, Credit = ? WHERE SalesID = ?', [$nickname, $amount, $discount, $total, 1, sales_text($_POST, 'Note'), $nickname === 'Select Member' ? 0 : 1, $SalesID]);
     });
 }
 $quantity = input_decimal(sales_text($_POST, 'qnty'), 12, 3);
-if ($SalesID > 0 && sales_text($_POST, 'Item') !== '' && $quantity != 0) {
+if ($SalesID > 0 && $action === 'add' && $quantity != 0) {
     $itemID = sales_id($_POST, 'ItemID');
     db_tx(function () use ($SalesID, $itemID, $quantity): void {
         $parent = db_one('SELECT Post FROM canteen_sales WHERE SalesID = ? FOR UPDATE', [$SalesID]);
@@ -53,8 +61,9 @@ if ($SalesID > 0 && sales_text($_POST, 'Item') !== '' && $quantity != 0) {
         db_exec('UPDATE canteen_sales SET SR = ? WHERE SalesID = ?', ['S', $SalesID]);
     });
 }
-if ($SalesID > 0 && sales_id($_GET, 'id') > 0) {
-    $detailID = sales_id($_GET, 'id');
+if ($SalesID > 0 && $action === 'remove' && sales_id($_POST, 'id') > 0) {
+    $detailID = sales_id($_POST, 'id');
+    confirm_delete(['Bill' => $SalesID, 'id' => $detailID], 'Sales.php?Bill=' . $SalesID);
     db_tx(function () use ($SalesID, $detailID): void {
         $parent = db_one('SELECT Post FROM canteen_sales WHERE SalesID = ? FOR UPDATE', [$SalesID]);
         if ($parent === null || (int)$parent->Post !== 0) return;
@@ -107,7 +116,7 @@ $TotalAmount = $Post === 'Posted' ? $bill->Total : $Sum;
 <script type="text/javascript">
 
   shortcut.add("alt+a", function() {
-  window.location="Sales.php?NBill=add_new";
+  document.getElementById("new_bill").submit();
   });
   shortcut.add("alt+p", function() {
   return formPost();
@@ -247,7 +256,7 @@ if ($bill !== null) {
 
 <fieldset>
 <legend>Product Sales </legend>
-<form action="" method="post" name="dm" id="dm">
+<form action="" method="post" name="dm" id="dm"><?php csrf_field(); ?>
   <table width="100%" border="0" cellspacing="1" cellpadding="1">
     <tr>
       <td><table width="100%" border="0" cellspacing="1" cellpadding="1" >
@@ -293,8 +302,9 @@ if ($bill !== null) {
 
       </table></td>
     </tr>
-    <tr>
-      <td>
+  </table>
+</form>
+<table width="100%"><tr><td>
 
 <?php
 
@@ -314,8 +324,7 @@ foreach ($details as $Detail) {
     print '<td>' . e(fmt_numeric($Detail->Qnty)) . "</td>\n";
     print '<td>' . e(fmt_numeric($Detail->PurAmt)) . "</td>\n";
     print '<td>' . e(fmt_numeric($Detail->Amt)) . "</td>\n";
-    $removeUrl = 'Sales.php?' . http_build_query(['Bill' => $SalesID, 'ItemID' => $Detail->ItemID, 'qnty' => fmt_qty($Detail->Qnty), 'id' => $Detail->ID]);
-    print '<td><a href="' . e($removeUrl) . '"> Delete </a></td></tr>' . "\n";
+    print '<td>' . action_form('Sales.php', ['Bill' => $SalesID, 'id' => $Detail->ID], 'Delete') . '</td></tr>' . "\n";
 }
 echo "</table>";
 
@@ -324,12 +333,12 @@ echo "</table>";
       </td>
     </tr>
   </table>
-</form>
 
-<form name="form2" method="GET" id="form2" action="">
+<form id="new_bill" method="post" action="Sales.php"><?php csrf_field(); ?><input type="hidden" name="NBill" value="add_new"></form>
+<form name="form2" method="post" id="form2" action=""><?php csrf_field(); ?>
 <table width="100%" border="0" cellspacing="0" cellpadding="1" style="font-size: 14pt">
 <tr bgcolor="#f1f1f1">
-  <td><a class="battun" href="Sales.php?NBill=add_new" title="Alt+A"> Add New </a>
+  <td><button type="submit" form="new_bill" class="battun" title="Alt+A"> Add New </button>
     <a class="battun" onClick="bill();" href="#" title="Alt+M" >Bill</a>
     <input name="Bill" type="hidden" id="Bill" value="<?= e($SalesID ?: '') ?>">
     <input name="Nickname" type="hidden" id="Nickname">

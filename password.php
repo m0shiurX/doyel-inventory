@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login();
+csrf_check_post();
 $UserName = current_user();
 $message = '';
 $success = false;
@@ -44,7 +45,7 @@ if ($message !== '') echo $success ? '<b>' . e($message) . '</b>' : '<span class
 <body>
   <div align="left"><br />
   </div>
-<form id="form1" name="form1" method="post" action="">
+<form id="form1" name="form1" method="post" action=""><?php csrf_field(); ?>
   <div align="left">
     <table width="433" border="0" cellspacing="0" cellpadding="0">
       <tr>

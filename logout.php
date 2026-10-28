@@ -1,6 +1,11 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login();
+csrf_check_post();
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    echo '<!doctype html><html><head><meta charset="UTF-8"><title>Logout</title></head><body>' . action_form('logout.php', [], 'Logout') . '</body></html>';
+    exit;
+}
 // Retain the legacy navigation body accompanying the redirect.
 include __DIR__ . '/menu.php';
 $_SESSION = [];

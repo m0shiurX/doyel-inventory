@@ -1,6 +1,11 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login();
+csrf_check_post();
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    echo '<!doctype html><html><head><meta charset="UTF-8"><title>Save stock</title></head><body>' . action_form('SavePrestntStock.php', [], 'Save Prestnt Stock') . '</body></html>';
+    exit;
+}
 db_tx(static function (): void {
     $date = now_sql();
     db_exec('INSERT INTO canteen_stock (Date) VALUES (?)', [$date]);

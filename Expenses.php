@@ -1,22 +1,25 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login();
+csrf_check_post();
 function expenses_text(array $source, string $key, int $length = 0): string
 {
     $value = is_string($source[$key] ?? null) ? $source[$key] : '';
     return $length > 0 ? mb_substr($value, 0, $length, 'UTF-8') : $value;
 }
+$action = mutation_action(['delete' => isset($_POST['d']), 'add' => isset($_POST['amount'])]);
 $message = '';
 $rawAmount = expenses_text($_POST, 'amount');
 $description = expenses_text($_POST, 'Description', 100);
 $head = expenses_text($_POST, 'HeadOfAccount', 50);
-if (is_numeric($rawAmount) && is_finite((float)$rawAmount) && $rawAmount !== '0' && $description !== '' && $head !== '' && $head !== 'Head Of Accounts') {
+if ($action === 'add' && is_numeric($rawAmount) && is_finite((float)$rawAmount) && $rawAmount !== '0' && $description !== '' && $head !== '' && $head !== 'Head Of Accounts') {
     db_exec('INSERT INTO canteen_expenses (Date, UserName, Description, HeadOfAccount, amount, Remarks) VALUES (?, ?, ?, ?, ?, ?)', [now_sql(), mb_substr(current_user(), 0, 30, 'UTF-8'), $description, $head, input_decimal($rawAmount), expenses_text($_POST, 'Remarks', 20)]);
     $message = 'Expenses Sucess';
 }
 $deleteMessage = '';
-$id = filter_var($_GET['d'] ?? null, FILTER_VALIDATE_INT);
-if (is_admin() && $id !== false && $id > 0) {
+$id = filter_var($_POST['d'] ?? null, FILTER_VALIDATE_INT);
+if ($action === 'delete' && is_admin() && $id !== false && $id > 0) {
+    confirm_delete(['d' => $id], 'Expenses.php');
     db_exec('DELETE FROM canteen_expenses WHERE PaymentID = ?', [$id]);
     $deleteMessage = 'Expanse no ' . $id . ' is Removed.';
 }
@@ -42,7 +45,7 @@ $rows = is_admin()
 <?php if ($message !== '') echo e($message); ?>
 
 
-<form name="form1" method="post" action="Expenses.php">
+<form name="form1" method="post" action="Expenses.php"><?php csrf_field(); ?>
     <fieldset>
       <legend>Cash Expanse</legend>
     <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -85,7 +88,7 @@ foreach ($rows as $Paid) {
     print '<td>' . e($Paid->Description) . "</td>\n";
     print '<td>' . e(fmt_numeric($Paid->amount)) . "</td>\n";
     print '<td>' . e($Paid->Remarks) . "</td>\n";
-    print '<td><a href="Expenses.php?d=' . e(urlencode($Paid->PaymentID)) . '">Delete</a></td></tr>' . "\n";
+    print '<td>' . action_form('Expenses.php', ['d' => $Paid->PaymentID], 'Delete') . '</td></tr>' . "\n";
 }
 ?>
 

@@ -1,13 +1,20 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login();
+csrf_check_post();
 function purchase_input(array $input, string $key): string {
     return is_scalar($input[$key] ?? null) ? (string)$input[$key] : '';
 }
-$BillNo = purchase_input($_POST, 'bill_no') ?: purchase_input($_GET, 'Bill');
+$BillNo = purchase_input($_POST, 'bill_no') ?: (purchase_input($_POST, 'Bill') ?: purchase_input($_GET, 'Bill'));
 $BillNo = ctype_digit($BillNo) && (int)$BillNo > 0 ? (int)$BillNo : '';
+$action = mutation_action([
+    'new' => purchase_input($_POST, 'NBill') === 'add_new',
+    'post' => purchase_input($_POST, 'hPost') !== '',
+    'remove' => purchase_input($_POST, 'id') !== '',
+    'add' => purchase_input($_POST, 'Item') !== '',
+]);
 $UserName = current_user();
-if (purchase_input($_GET, 'NBill') === 'add_new') {
+if ($action === 'new') {
     $BillNo = db_tx(function () use ($UserName) {
         // Serialize this user's open-bill lookup without guessing the last ID.
         db_all('SELECT user_id FROM l_user WHERE UserName = ? ORDER BY user_id FOR UPDATE', [$UserName]);
@@ -18,20 +25,20 @@ if (purchase_input($_GET, 'NBill') === 'add_new') {
         return (int)db_insert_id();
     });
 }
-if ($BillNo !== '' && purchase_input($_GET, 'hPost') !== '') {
+if ($BillNo !== '' && $action === 'post') {
     db_tx(function () use ($BillNo) {
         $bill = db_one('SELECT BillNo, Post FROM canteen_purchase WHERE BillNo = ? FOR UPDATE', [$BillNo]);
         if ($bill === null || (int)$bill->Post !== 0) return;
-        $discount = input_decimal(purchase_input($_GET, 'discount'));
+        $discount = input_decimal(purchase_input($_POST, 'discount'));
         $totals = db_one('SELECT COALESCE(SUM(Amt), 0) AS Amount, COALESCE(SUM(Amt), 0) - CAST(? AS DECIMAL(14,2)) AS Total FROM canteen_purchase_detail WHERE BillNo = ?', [$discount, $BillNo]);
         $amount = input_decimal($totals->Amount);
         $total = input_decimal($totals->Total);
         // The entered discount is allowed; readonly amount/total are not trusted.
-        db_exec('UPDATE canteen_purchase SET Supplier = ?, Amount = ?, Discount = ?, Total = ?, Post = ? WHERE BillNo = ? AND Post = ?', [mb_substr(purchase_input($_GET, 'supplier'), 0, 80, 'UTF-8'), $amount, $discount, $total, 1, $BillNo, 0]);
+        db_exec('UPDATE canteen_purchase SET Supplier = ?, Amount = ?, Discount = ?, Total = ?, Post = ? WHERE BillNo = ? AND Post = ?', [mb_substr(purchase_input($_POST, 'supplier'), 0, 80, 'UTF-8'), $amount, $discount, $total, 1, $BillNo, 0]);
     });
 }
 $quantity = ltrim(input_decimal(purchase_input($_POST, 'qnty'), 12, 3), '-');
-if ($BillNo !== '' && purchase_input($_POST, 'Item') !== '' && $quantity != 0) {
+if ($BillNo !== '' && $action === 'add' && $quantity != 0) {
     $rate = input_decimal(purchase_input($_POST, 'rate'), 14, 3);
     $lineAmount = ltrim(decimal_product($quantity, $rate), '-');
     $itemId = purchase_input($_POST, 'ItemID');
@@ -46,8 +53,9 @@ if ($BillNo !== '' && purchase_input($_POST, 'Item') !== '' && $quantity != 0) {
         db_exec('UPDATE canteen_purchase SET PR = ? WHERE BillNo = ?', ['S', $BillNo]);
     });
 }
-$detailId = purchase_input($_GET, 'id');
-if ($BillNo !== '' && ctype_digit($detailId) && (int)$detailId > 0) {
+$detailId = purchase_input($_POST, 'id');
+if ($action === 'remove' && $BillNo !== '' && ctype_digit($detailId) && (int)$detailId > 0) {
+    confirm_delete(['Bill' => $BillNo, 'id' => $detailId], 'purchase.php?Bill=' . $BillNo);
     db_tx(function () use ($BillNo, $detailId) {
         $bill = db_one('SELECT BillNo, Post FROM canteen_purchase WHERE BillNo = ? FOR UPDATE', [$BillNo]);
         if ($bill === null || (int)$bill->Post !== 0) return;
@@ -95,7 +103,7 @@ $TotalAmount = $Sum;
     </script>
 <script type="text/javascript">
   shortcut.add("alt+a", function() {
-  window.location="purchase.php?NBill=add_new";
+  document.getElementById("new_bill").submit();
       });
       shortcut.add("alt+p", function() {
     document.forms["form2"].submit();
@@ -202,7 +210,7 @@ if ($BillInfo !== null) {
 
 <fieldset>
 <legend>Add to Stock</legend>
-<form action="" method="post" name="dm" id="dm">
+<form action="" method="post" name="dm" id="dm"><?php csrf_field(); ?>
   <table width="100%" border="0" cellspacing="1" cellpadding="1">
     <tr>
       <td><table width="100%" border="0" cellspacing="1" cellpadding="1" >
@@ -234,16 +242,16 @@ if ($BillInfo !== null) {
 
       </table></td>
     </tr>
-    <tr>
-      <td>
+  </table>
+</form>
+<table width="100%"><tr><td>
 
 <?php
 echo '<table width="100%" border="0" cellspacing="1" cellpadding="1" class="table1" id="tableGd">';
 echo '<tr><td width="10%"><b>Item ID</b></td><td width="40%"><b>Item Name</b></td><td width="15%"><b>Qnty</b></td><td width="15%"><b>Amount</b></td><td width="20%"><b>Delete</b></td></tr>';
 foreach ($details as $Detail) {
     echo '<tr><td>' . e($Detail->ItemID) . '</td> <td>' . e($Detail->ItemName) . '</td> <td>' . e(fmt_numeric($Detail->Qnty)) . '</td> <td>' . e(fmt_numeric($Detail->Amt)) . '</td> ';
-    $removeUrl = 'purchase.php?' . http_build_query(['Bill' => $BillNo, 'ItemID' => $Detail->ItemID, 'qnty' => fmt_qty($Detail->Qnty), 'id' => $Detail->ID]);
-    echo '<td><a href="' . e($removeUrl) . '"> Delete </a></td> </tr>';
+    echo '<td>' . action_form('purchase.php', ['Bill' => $BillNo, 'id' => $Detail->ID], 'Delete') . '</td> </tr>';
 }
 echo '</table>';
 ?>
@@ -251,12 +259,12 @@ echo '</table>';
       </td>
     </tr>
   </table>
-</form>
 
-<form name="form2" method="GET" id="form2" action="">
+<form id="new_bill" method="post" action="purchase.php"><?php csrf_field(); ?><input type="hidden" name="NBill" value="add_new"></form>
+<form name="form2" method="post" id="form2" action=""><?php csrf_field(); ?>
 <table width="100%" border="0" cellspacing="1" cellpadding="1" style="font-size: 14pt">
 <tr bgcolor="#f1f1f1">
-    <td><a class="battun" href="purchase.php?NBill=add_new" title="Alt+A"> Add New </a>
+    <td><button type="submit" form="new_bill" class="battun" title="Alt+A"> Add New </button>
     <a class="battun" onClick="bill();" title="Alt+M" href="#"> Bill </a></td>
 
               <td>Amount :

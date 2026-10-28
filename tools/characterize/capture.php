@@ -50,7 +50,7 @@ try {
         $request = characterization_resolve($requests['login'], $variables);
         $response = characterization_http($base, $request, $cookies);
         if ($wanted('login')) $record('login', $request, $response);
-        $login = characterization_http($base, ['label' => 'authenticate', 'method' => 'POST', 'path' => '/login.php', 'body' => http_build_query(['username' => getenv('DOYEL_TEST_USER') ?: 'rayhan', 'password' => getenv('DOYEL_TEST_PASS') ?: 'admin-test'])], $cookies);
+        $login = characterization_http($base, characterization_prepare_post($base, ['label' => 'authenticate', 'method' => 'POST', 'path' => '/login.php', 'body' => http_build_query(['username' => getenv('DOYEL_TEST_USER') ?: 'rayhan', 'password' => getenv('DOYEL_TEST_PASS') ?: 'admin-test'])], $cookies), $cookies);
         if ($login['status'] !== 302) throw new RuntimeException('Fixture authentication did not redirect; check fixture credentials');
     }
     foreach ($requests as $label => $request) {
@@ -61,7 +61,7 @@ try {
     $hasReports = (bool)array_filter($selected, static fn($label) => str_starts_with($label, 'report-') && $label !== 'report-controls');
     foreach ($hasReports ? ['full' => ['01-01-2016', '25-10-2026'], 'month' => ['01-09-2026', '30-09-2026']] : [] as $range => [$start, $end]) {
         $set = ['label' => 'range-' . $range, 'method' => 'POST', 'path' => '/Report.php', 'body' => http_build_query(['start_date' => $start, 'end_date' => $end, 'start_time' => '00:00:00', 'end_time' => '23:59:59'])];
-        $response = characterization_http($base, $set, $cookies);
+        $response = characterization_http($base, characterization_prepare_post($base, $set, $cookies), $cookies);
         if ($response['status'] !== 200) throw new RuntimeException('Failed to set report range');
         foreach ($requests as $label => $request) {
             if (!$wanted($label) || !str_starts_with($label, 'report-') || $label === 'report-controls') continue;
@@ -70,6 +70,10 @@ try {
         }
     }
     $request = $requests['logout'];
+    if (characterization_form_token(characterization_http($base, ['label'=>'logout-form', 'method'=>'GET', 'path'=>'/index.php', 'body'=>''], $cookies)['body']) !== null) {
+        $request['method'] = 'POST';
+        $request = characterization_prepare_post($base, $request, $cookies);
+    }
     $response = characterization_http($base, $request, $cookies);
     if ($wanted('logout')) $record('logout', $request, $response);
     sort($statuses);

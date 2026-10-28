@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login();
+csrf_check_post();
 function account_head_text(array $source, string $key, int $length = 0): string
 {
     $value = is_string($source[$key] ?? null) ? $source[$key] : '';
@@ -44,7 +45,7 @@ $rows = db_all('SELECT headID, HeadOfAccount, conCode, D FROM canteen_ac_head OR
 <?php if ($message !== '') echo e($message); ?>
 
 
-<form name="form1" method="post" action="">
+<form name="form1" method="post" action=""><?php csrf_field(); ?>
     Head Of Account
     <input value="<?= e($selected->HeadOfAccount ?? '') ?>" name="HeadOfAccount" type="text" id="HeadOfAccount" size="50">
     Control Code

@@ -73,13 +73,13 @@ final class PerfLog
 
 function perf_login(string $base, string $cookies): void
 {
-    $response = characterization_http($base, ['label' => 'authenticate', 'method' => 'POST', 'path' => '/login.php', 'body' => http_build_query(['username' => getenv('DOYEL_TEST_USER') ?: 'rayhan', 'password' => getenv('DOYEL_TEST_PASS') ?: 'admin-test'])], $cookies);
+    $response = characterization_http($base, characterization_prepare_post($base, ['label' => 'authenticate', 'method' => 'POST', 'path' => '/login.php', 'body' => http_build_query(['username' => getenv('DOYEL_TEST_USER') ?: 'rayhan', 'password' => getenv('DOYEL_TEST_PASS') ?: 'admin-test'])], $cookies), $cookies);
     if ($response['status'] !== 302) throw new RuntimeException('Fixture login failed');
 }
 
 function perf_range(string $base, string $cookies): void
 {
-    $response = characterization_http($base, ['label' => 'report-range', 'method' => 'POST', 'path' => '/Report.php', 'body' => http_build_query(['start_date' => '01-01-2016', 'end_date' => '25-10-2026', 'start_time' => '00:00:00', 'end_time' => '23:59:59'])], $cookies);
+    $response = characterization_http($base, characterization_prepare_post($base, ['label' => 'report-range', 'method' => 'POST', 'path' => '/Report.php', 'body' => http_build_query(['start_date' => '01-01-2016', 'end_date' => '25-10-2026', 'start_time' => '00:00:00', 'end_time' => '23:59:59'])], $cookies), $cookies);
     if ($response['status'] !== 200) throw new RuntimeException('Report range setup failed');
 }
 
@@ -150,12 +150,20 @@ try {
     if ($route['status'] !== 200 || $route['queries'] < 1) throw new RuntimeException('HTTP server does not query the selected fixture database; profiling cancelled');
     $results = [];
     $work = $snapshot ? ['stock-save' => ['label' => 'stock-save', 'method' => 'GET', 'path' => '/SavePrestntStock.php', 'body' => '']] : array_intersect_key($requests, array_flip($selected));
+    if ($snapshot && $target === 'modern') {
+        $work['stock-save']['method'] = 'POST';
+        $work['stock-save'] = characterization_prepare_post($base, $work['stock-save'], $cookies);
+    }
     foreach ($work as $label => $request) {
         $samples = [];
         for ($sample = 1; $sample <= ($snapshot ? 1 : 5); $sample++) {
-            // Report controls GET resets the range, and logout destroys cookies:
+            // Legacy report controls reset the range, and logout destroys cookies:
             // setup stays outside the logging/timing window for every sample.
             if ($label === 'logout' && $sample > 1) perf_login($base, $cookies);
+            if ($label === 'logout' && $target === 'modern') {
+                $request['method'] = 'POST';
+                $request = characterization_prepare_post($base, $request, $cookies);
+            }
             if (str_starts_with($label, 'report-') && $label !== 'report-controls') perf_range($base, $cookies);
             $samples[] = $logger->measure($base, characterization_resolve($request, $variables), $cookies, $out . '/' . $label . '-' . $sample . '.sql.private.json');
         }

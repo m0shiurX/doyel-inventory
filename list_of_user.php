@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_admin();
+csrf_check_post();
 ?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
@@ -40,7 +41,7 @@ if (!$added) form();
         <?php
   function form(){
         ?><fieldset><legend>Add User</legend>
-        <form action="" method="post" name="add_book" id="add_book">
+        <form action="" method="post" name="add_book" id="add_book"><?php csrf_field(); ?>
           <table width="100%" border="0" cellspacing="0" cellpadding="0">
             <tr>
               <td width="27%">&nbsp;</td>

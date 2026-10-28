@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login();
+csrf_check_post();
 function payment_text(array $source, string $key, int $length = 0): string
 {
     $value = is_string($source[$key] ?? null) ? $source[$key] : '';
@@ -149,7 +150,7 @@ echo ' Total Due ' . e($amount) . ' Taka';
 ?>
 
   <br><br>
-<form name="form1" method="post" action="" class="hidep">
+<form name="form1" method="post" action="" class="hidep"><?php csrf_field(); ?>
     <table width="100%" border="0" cellspacing="1" cellpadding="1" class="table1">
       <tr>
         <td width="10%">Amount</td>
@@ -184,7 +185,7 @@ foreach ($payments as $Detail) {
     print '<td class="hide">' . e($Detail->Description) . "</td>\n";
     print '<td>' . e(fmt_numeric($Detail->amount)) . "</td>\n";
     print '<td>' . e($Detail->Remarks) . '</td>';
-    print '<td class="hidep"><a href="remove_payment.php?d=' . e(urlencode($Detail->PaymentID)) . '">Delete</a></td>' . "\n</tr>\n";
+    print '<td class="hidep">' . action_form('remove_payment.php', ['d' => $Detail->PaymentID], 'Delete') . '</td>' . "\n</tr>\n";
 }
 ?>
 </table>

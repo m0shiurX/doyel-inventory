@@ -27,8 +27,28 @@ final class Scenario
     { if (!$condition) throw new RuntimeException($this->name . ': ' . $message); }
     public function http(string $path, array $post = [], string $method = ''): array
     {
+        if ($this->target === 'modern') {
+            $route = parse_url($path, PHP_URL_PATH);
+            parse_str(parse_url($path, PHP_URL_QUERY) ?? '', $query);
+            $billAction = in_array($route, ['/Sales.php','/purchase.php'], true) && (isset($query['NBill']) || isset($query['hPost']) || isset($query['id']));
+            $adminAction = $route === '/Unpost.php' && (bool)array_intersect(array_keys($query), ['p','s','d','dl']);
+            $delete = in_array($route, ['/CashCollection.php','/Expenses.php','/remove_payment.php'], true) && isset($query['d']);
+            if ($billAction || $adminAction || $delete) { $post = $query + $post; $path = $route; $method = 'POST'; }
+            if (in_array($route, ['/SavePrestntStock.php','/logout.php'], true)) $method = 'POST';
+        }
         $method = $method ?: ($post ? 'POST' : 'GET');
+        if ($this->target === 'modern' && $method === 'POST') {
+            $request = characterization_prepare_post($this->base, ['label'=>'form', 'method'=>'POST', 'path'=>$path, 'body'=>http_build_query($post)], $this->cookie, $route === '/AddSupplierName.php' ? '/Supplier.php' : ($route === '/remove_payment.php' ? '/Payment.php' : $path));
+            parse_str($request['body'], $post);
+        }
         $r = characterization_http($this->base, ['label' => $this->name . '-step-' . ++$this->step, 'method' => $method, 'path' => $path, 'body' => $post ? http_build_query($post) : ''], $this->cookie);
+        if ($this->target === 'modern' && str_contains($r['body'], '<title>Confirm deletion</title>')) {
+            // Submit the server-rendered confirmation, including its actual fields.
+            $doc = new DOMDocument(); @$doc->loadHTML($r['body']); $confirmed = [];
+            foreach ($doc->getElementsByTagName('input') as $input) $confirmed[$input->getAttribute('name')] = $input->getAttribute('value');
+            $confirmed['confirm_delete'] = 'yes';
+            $r = characterization_http($this->base, ['label'=>'confirm-delete', 'method'=>'POST', 'path'=>parse_url($path, PHP_URL_PATH), 'body'=>http_build_query($confirmed)], $this->cookie);
+        }
         file_put_contents($this->out . '/' . $this->name . '-' . $this->step . '.html.private', $r['body']);
         $this->check($r['status'] >= 200 && $r['status'] < 400, 'unexpected HTTP status at step ' . $this->step);
         $this->check(!preg_match('/(?:<b>)?(?:Fatal error|Parse error)(?:<\/b>)?:/i', $r['body']), 'fatal PHP error at step ' . $this->step);
@@ -60,7 +80,7 @@ final class Scenario
         $rows = $this->rows('SELECT ' . implode(',', $columns) . " FROM $table WHERE $where ORDER BY $order", $params);
         if (!isset($this->numeric[$table])) {
             $this->numeric[$table] = [];
-            foreach ($this->rows("SHOW COLUMNS FROM $table") as $column) {
+             foreach ($this->rows("SHOW COLUMNS FROM $table") as $column) {
                 if (preg_match('/^(?:tinyint|smallint|mediumint|int|bigint|decimal|numeric|float|double|real)\b/i', $column['Type'])) $this->numeric[$table][] = $column['Field'];
             }
         }
@@ -206,7 +226,7 @@ function run_scenario(Scenario $s, int $number): void
     case 7:
         foreach (['admin','user'] as $role) {
             $s->login($role);
-            foreach (['sale','purchase'] as $kind) {
+             foreach (['sale','purchase'] as $kind) {
                 $sale=$kind==='sale'; $table=$sale?'canteen_sales':'canteen_purchase'; $key=$sale?'SalesID':'BillNo'; $detail=$sale?'canteen_sales_detail':'canteen_purchase_detail';
                 $id=(int)$s->value("SELECT b.$key FROM $table b WHERE Post=1 AND EXISTS (SELECT 1 FROM $detail d WHERE d.$key=b.$key) ORDER BY b.$key DESC LIMIT 1");
                 $s->check($id>0,'posted bill fixture missing');
@@ -227,7 +247,7 @@ function run_scenario(Scenario $s, int $number): void
                     $s->check((int)$s->value("SELECT COUNT(*) FROM $detail WHERE $key=?",[$id]) === ($admin ? 0 : $lineCount),'modern detail authorization/delete failed');
                     if (!$admin) $s->check((int)$s->value("SELECT Post FROM $table WHERE $key=?",[$id]) === 1,'non-admin unpost changed the bill');
                     $stockAfter = array_column($s->rows('SELECT ItemID,Qnty FROM canteen_item WHERE ItemID IN (' . implode(',',array_fill(0,count($ids),'?')) . ') ORDER BY ItemID', $ids), 'Qnty', 'ItemID');
-                    foreach ($stockBefore as $item => $quantity) {
+                     foreach ($stockBefore as $item => $quantity) {
                         $expected = (float)$quantity + ($admin ? ($sale ? 1 : -1) * (float)$quantities[$item] : 0);
                         $s->check(abs((float)$stockAfter[$item] - $expected) < 0.000001,'modern bill stock reversal incorrect');
                     }

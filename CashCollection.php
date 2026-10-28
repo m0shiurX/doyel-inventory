@@ -1,22 +1,25 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login();
+csrf_check_post();
 function collection_text(array $source, string $key, int $length = 0): string
 {
     $value = is_string($source[$key] ?? null) ? $source[$key] : '';
     return $length > 0 ? mb_substr($value, 0, $length, 'UTF-8') : $value;
 }
+$action = mutation_action(['delete' => isset($_POST['d']), 'add' => isset($_POST['amount'])]);
 $message = '';
 $rawAmount = collection_text($_POST, 'amount');
 $description = collection_text($_POST, 'Description', 100);
 $head = collection_text($_POST, 'HeadOfAccount', 50);
-if (is_numeric($rawAmount) && is_finite((float)$rawAmount) && $rawAmount !== '0' && $description !== '' && $head !== '' && $head !== 'Head Of Accounts') {
+if ($action === 'add' && is_numeric($rawAmount) && is_finite((float)$rawAmount) && $rawAmount !== '0' && $description !== '' && $head !== '' && $head !== 'Head Of Accounts') {
     db_exec('INSERT INTO canteen_collection (Date, UserName, Description, HeadOfAccount, amount, Remarks) VALUES (?, ?, ?, ?, ?, ?)', [now_sql(), mb_substr(current_user(), 0, 50, 'UTF-8'), $description, $head, input_decimal($rawAmount), collection_text($_POST, 'Remarks', 100)]);
     $message = 'Payment Sucess';
 }
 $deleteMessage = '';
-$id = filter_var($_GET['d'] ?? null, FILTER_VALIDATE_INT);
-if (is_admin() && $id !== false && $id > 0) {
+$id = filter_var($_POST['d'] ?? null, FILTER_VALIDATE_INT);
+if ($action === 'delete' && is_admin() && $id !== false && $id > 0) {
+    confirm_delete(['d' => $id], 'CashCollection.php');
     db_exec('DELETE FROM canteen_collection WHERE PaymentID = ?', [$id]);
     $deleteMessage = 'Collection no ' . $id . ' is Removed.';
 }
@@ -41,7 +44,7 @@ $rows = is_admin()
 <div style=" min-height:450px;display:block; margin-bottom:30px;">
 <?php if ($message !== '') echo e($message); ?>
 
-<form name="form1" method="post" action="CashCollection.php">
+<form name="form1" method="post" action="CashCollection.php"><?php csrf_field(); ?>
     <fieldset>
       <legend>Cash Collection</legend>
     <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -84,7 +87,7 @@ foreach ($rows as $Paid) {
     print '<td>' . e($Paid->Description) . "</td>\n";
     print '<td>' . e(fmt_numeric($Paid->amount)) . "</td>\n";
     print '<td>' . e($Paid->Remarks) . "</td>\n";
-    print '<td><a href="CashCollection.php?d=' . e(urlencode($Paid->PaymentID)) . '">Delete</a></td></tr>' . "\n";
+    print '<td>' . action_form('CashCollection.php', ['d' => $Paid->PaymentID], 'Delete') . '</td></tr>' . "\n";
 }
 ?>
 

@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login();
+csrf_check_post();
 ?>
 
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
@@ -33,11 +34,13 @@ $FormDate = report_date($posted('start_date'));
 $ToDate = report_date($posted('end_date'));
 $FormTime = report_time($posted('start_time'), '00:00:00');
 $ToTime = report_time($posted('end_time'), '23:59:59');
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 $_SESSION['form_date'] = DateTimeImmutable::createFromFormat('!d-m-Y', $FormDate)->format('Y-m-d') . ' ' . $FormTime;
 $_SESSION['to_date'] = DateTimeImmutable::createFromFormat('!d-m-Y', $ToDate)->format('Y-m-d') . ' ' . $ToTime;
+}
 ?>
 
-<p><form action="" method="POST" name="form" >
+<p><form action="" method="POST" name="form" ><?php csrf_field(); ?>
 <table width="778" border="0" cellpadding="0" cellspacing="10">
     <tr>
        <td width="44">Form</td>

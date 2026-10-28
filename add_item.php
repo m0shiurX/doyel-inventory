@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login();
+csrf_check_post();
 function item_text(string $key, int $length): string
 {
     return mb_substr(is_string($_POST[$key] ?? null) ? $_POST[$key] : '', 0, $length, 'UTF-8');
@@ -70,7 +71,7 @@ if ($ID > 0) {
 
 <fieldset>
   <legend>Adding/Updating an Item</legend>
-  <form action="" method="post" enctype="multipart/form-data" name="add_book" id="add_book">
+  <form action="" method="post" enctype="multipart/form-data" name="add_book" id="add_book"><?php csrf_field(); ?>
     <table width="100%" border="0" cellspacing="0" cellpadding="0">
       <tr>
         <td>Item ID</td>

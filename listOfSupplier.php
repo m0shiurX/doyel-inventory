@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login();
+csrf_check_post();
 $selectedName = is_string($_GET['Name'] ?? null) ? $_GET['Name'] : '';
 $selectedId = is_scalar($_GET['ID'] ?? null) ? (string)$_GET['ID'] : '';
 $paymentAdded = false;
@@ -26,7 +27,7 @@ if ($selectedName !== '' && is_numeric($amountInput) && is_finite((float)$amount
                 $.ajax({
                     url: 'AddSupplierName.php',
                     type: 'POST',
-                    data: {SupplierName: SupplierName},
+                    data: {SupplierName: SupplierName, csrf_token: <?= json_encode(csrf_token()) ?>},
 
                     success: function(result){
                         $('.response').remove();
@@ -51,7 +52,7 @@ if ($selectedName !== '' && is_numeric($amountInput) && is_finite((float)$amount
 if ($paymentAdded) echo 'Payment Sucsecc';
 ?>
 
- <form action="" method="post">
+ <form action="" method="post"><?php csrf_field(); ?>
    <div id="subform">
    <a href="#">Add New Supplier</a><input name="SupplierName" type="text" id="SupplierName" size="44">
    <input type="submit" name="button" id="button" value="Submit">

@@ -1,6 +1,8 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login_json();
+csrf_check_post();
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') { http_response_code(405); header('Allow: POST'); exit; }
 header('Content-Type: text/html; charset=UTF-8');
 $name = mb_substr(is_string($_POST['SupplierName'] ?? null) ? $_POST['SupplierName'] : '', 0, 80, 'UTF-8');
 if ($name === '') { echo 'Please fill in SupplierName fild'; exit; }

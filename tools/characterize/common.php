@@ -74,3 +74,17 @@ function characterization_errors(string $html): array
     preg_match_all('/(?:<b>)?(Warning|Notice|Fatal error|Deprecated|Parse error)(?:<\/b>)?:\s*(.*?)(?:<br\s*\/?>|\n|$)/is', $html, $matches, PREG_SET_ORDER);
     return array_map(static fn($m) => preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($m[1] . ': ' . $m[2]), ENT_QUOTES | ENT_HTML5, 'UTF-8')), $matches);
 }
+
+/** Discover real forms: legacy pages have no CSRF field and remain unchanged. */
+function characterization_form_token(string $html): ?string
+{
+    if (!preg_match('/name="csrf_token" value="([a-f0-9]{64})"/', $html, $match)) return null;
+    return $match[1];
+}
+function characterization_prepare_post(string $base, array $request, string $cookies, ?string $formPath = null): array
+{
+    $form = characterization_http($base, ['label' => 'form-setup', 'method' => 'GET', 'path' => $formPath ?? $request['path'], 'body' => ''], $cookies);
+    $token = characterization_form_token($form['body']);
+    if ($token !== null) $request['body'] .= ($request['body'] === '' ? '' : '&') . http_build_query(['csrf_token' => $token]);
+    return $request;
+}

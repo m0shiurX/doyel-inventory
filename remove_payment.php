@@ -1,13 +1,15 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_login();
+csrf_check_post();
 if (!is_admin()) {
     echo '<script type="text/javascript">window.location.href="Payment.php";alert("Deletation Can not be Completed");</script>';
     exit;
 }
 require_admin();
-$id = filter_var($_GET['d'] ?? null, FILTER_VALIDATE_INT);
+$id = filter_var($_POST['d'] ?? null, FILTER_VALIDATE_INT);
 if ($id !== false && $id > 0) {
+    confirm_delete(['d' => $id], 'Payment.php');
     db_exec('DELETE FROM canteen_collection WHERE PaymentID = ?', [$id]);
     echo '<span class="warning">Collection no ' . e($id) . ' is Removed.</span>';
     echo '<script type="text/javascript">window.location.href="Payment.php";alert("Deletation Complete");</script>';

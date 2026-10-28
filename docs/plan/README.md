@@ -102,7 +102,7 @@ Phase 2 can start as soon as Phase 0 is merged. It doesn't wait for Phase 1.
 | S3.2 | Data clean-up | merged |
 | S3.3 | Column types and defaults | merged |
 | S3.4 | Constraints | merged |
-| S4.1 | POST + CSRF for destructive actions | todo |
+| S4.1 | POST + CSRF for destructive actions | merged |
 | S4.2 | Admin backup download | todo |
 | S4.3 | Error handling and logging | todo |
 | S4.4 | Front-end library refresh | todo |

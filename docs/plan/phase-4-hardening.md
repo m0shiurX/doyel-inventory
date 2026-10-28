@@ -13,7 +13,7 @@
 ## S4.1 POST + CSRF for destructive actions
 
 **Depends on:** Phase 2 merged (Phase 3 not required)
-**Owns:** `lib/csrf.php` (new), bootstrap CSRF inclusion, all business-write/login/report-session handlers and their forms in `Unpost.php`, `Sales.php`, `purchase.php`, `remove_payment.php`, `Payment.php`, `CashCollection.php`, `Expenses.php`, `SavePrestntStock.php`, `Report.php`, `Supplier.php`, `AddSupplierName.php`, `HeadOfAccount.php`, `add_item.php`, `add_member.php`, `list_of_user.php`, `password.php`, `login.php`; characterization/scenario/performance request helpers for token/method adaptation only.
+**Owns:** `lib/csrf.php` (new), bootstrap CSRF inclusion, all business-write/login/report-session handlers and their forms in `Unpost.php`, `Sales.php`, `purchase.php`, `remove_payment.php`, `Payment.php`, `CashCollection.php`, `Expenses.php`, `SavePrestntStock.php`, `Report.php`, `Supplier.php`, `listOfSupplier.php`, `AddSupplierName.php`, `HeadOfAccount.php`, `add_item.php`, `add_member.php`, `list_of_user.php`, `password.php`, `login.php`, `logout.php`, and the logout control in `menu.php`; characterization/scenario/performance request helpers for token/method adaptation only.
 **Resolves:** S6
 
 - `csrf_token()` stores one token per session. `csrf_field()` prints the hidden input. `require_csrf()` checks `hash_equals` and responds 403.
@@ -48,7 +48,7 @@
 **Owns:** `lib/bootstrap.php` (error section), `lib/errors.php` (new), `errors/500.php` (new)
 **Resolves:** none listed (operability)
 
-- Production config: `display_errors=0`, everything logged to `logs/app-YYYY-MM.log` (gitignored, created if missing).
+- Production config: `display_errors=0`, structured exceptions logged to `app-YYYY-MM.log` in a configurable private directory outside the web document root (created if missing). The default may use private OS temporary storage; configure durable private storage for deployment. Do not expose logs through HTTP.
 - An uncaught exception logs the URL, user, message and trace, then shows a plain "Something went wrong" page with a short reference ID that's also in the log line.
 - PDO exceptions never reach the browser. This replaces the legacy `or die(mysql_error())`, which leaked SQL.
 

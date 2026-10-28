@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
 require_admin();
+csrf_check_post();
 
 /** Header first, then detail rows and items, matching the bill-entry lock order. */
 function delete_inventory_bill(string $kind, int $id): bool
@@ -26,16 +27,17 @@ function delete_inventory_bill(string $kind, int $id): bool
     });
 }
 $messages = [];
-foreach (['p' => ['canteen_purchase', 'BillNo'], 's' => ['canteen_sales', 'SalesID']] as $action => [$table, $key]) {
-    $id = filter_var($_GET[$action] ?? null, FILTER_VALIDATE_INT);
-    if ($id !== false && $id > 0) {
+$action = mutation_action(['p' => isset($_POST['p']), 's' => isset($_POST['s']), 'dl' => isset($_POST['dl']), 'd' => isset($_POST['d'])]);
+$id = filter_var($_POST[$action] ?? null, FILTER_VALIDATE_INT);
+if ($id !== false && $id > 0) {
+    if ($action === 'p' || $action === 's') {
+        [$table, $key] = $action === 'p' ? ['canteen_purchase', 'BillNo'] : ['canteen_sales', 'SalesID'];
         db_exec("UPDATE $table SET Post = ? WHERE $key = ?", [0, $id]);
         $messages[] = "Bill no $id is Unposted.";
+    } elseif ($action === 'dl' || $action === 'd') {
+        confirm_delete([$action => $id], 'Unpost.php');
+        if (delete_inventory_bill($action === 'dl' ? 'purchase' : 'sale', $id)) $messages[] = "Bill no $id is Deleted.";
     }
-}
-foreach (['dl' => 'purchase', 'd' => 'sale'] as $action => $kind) {
-    $id = filter_var($_GET[$action] ?? null, FILTER_VALIDATE_INT);
-    if ($id !== false && $id > 0 && delete_inventory_bill($kind, $id)) $messages[] = "Bill no $id is Deleted.";
 }
 ?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
@@ -69,8 +71,8 @@ foreach (['dl' => 'purchase', 'd' => 'sale'] as $action => $kind) {
                 <td><?= e($Mem->BillNo) ?></td>
                 <td><?= e(date_format(date_create($Mem->Date), 'd-M-y h:i:s A')) ?></td>
                 <td><a href="purchase.php?Bill=<?= e(urlencode($Mem->BillNo)) ?>" target="_blank">View Bill</a></td>
-                <td><a href="Unpost.php?p=<?= e(urlencode($Mem->BillNo)) ?>">Unpost</a></td>
-                <td><a href="Unpost.php?dl=<?= e(urlencode($Mem->BillNo)) ?>">Delete</a></td>
+                <td><?= action_form('Unpost.php', ['p' => $Mem->BillNo], 'Unpost') ?></td>
+                <td><?= action_form('Unpost.php', ['dl' => $Mem->BillNo], 'Delete') ?></td>
             </tr>
         <?php endforeach; ?>
         </table>
@@ -91,8 +93,8 @@ foreach (['dl' => 'purchase', 'd' => 'sale'] as $action => $kind) {
                 <td><?= e($Mem->SalesID) ?></td>
                 <td><?= e(date_format(date_create($Mem->Date), 'd-M-y h:i:s A')) ?></td>
                 <td><a href="Sales.php?Bill=<?= e(urlencode($Mem->SalesID)) ?>" target="_blank">View Bill</a></td>
-                <td><a href="Unpost.php?s=<?= e(urlencode($Mem->SalesID)) ?>">Unpost</a></td>
-                <td><a href="Unpost.php?d=<?= e(urlencode($Mem->SalesID)) ?>">Delete</a></td>
+                <td><?= action_form('Unpost.php', ['s' => $Mem->SalesID], 'Unpost') ?></td>
+                <td><?= action_form('Unpost.php', ['d' => $Mem->SalesID], 'Delete') ?></td>
             </tr>
         <?php endforeach; ?>
         </table>

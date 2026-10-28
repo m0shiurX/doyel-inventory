@@ -25,7 +25,7 @@ try {
     $s->http('/Sales.php?'.http_build_query(['Bill'=>$bill,'id'=>$d['ID'],'qnty'=>'999','ItemID'=>0]));
     $s->check($stock()==='10.000','sale line reversal');
     $sale($bill,'1.0055');
-    $r=characterization_http($s->base,['label'=>'header-overflow','method'=>'GET','path'=>'/Sales.php?'.http_build_query(['Bill'=>$bill,'hPost'=>'1','discount'=>'-999999999999.99','Nickname'=>'Select Member'])],$s->cookie);
+    $r=characterization_http($s->base,characterization_prepare_post($s->base,['label'=>'header-overflow','method'=>'POST','path'=>'/Sales.php','body'=>http_build_query(['Bill'=>$bill,'hPost'=>'1','discount'=>'-999999999999.99','Nickname'=>'Select Member'])],$s->cookie),$s->cookie);
     $s->check($r['status']===400 && !characterization_errors($r['body']) && $s->value('SELECT Post FROM canteen_sales WHERE SalesID=?',[$bill])==='0','header total overflow rejects before posting');
     $s->http('/Sales.php?'.http_build_query(['Bill'=>$bill,'hPost'=>'1','discount'=>'0.005','Nickname'=>'Select Member','amount'=>'999','total'=>'999']));
     $s->check($s->rows('SELECT Amount,Discount,Total FROM canteen_sales WHERE SalesID=?',[$bill])[0]===['Amount'=>'1.01','Discount'=>'0.01','Total'=>'1.00'],'sale discount before total and server-owned amount');
@@ -57,17 +57,17 @@ try {
     }
     $bill=$s->newBill('sale');
     foreach(['1000000000','999999999.9995'] as $qty) {
-        $r=characterization_http($s->base,['label'=>'overflow','method'=>'POST','path'=>'/Sales.php','body'=>http_build_query(['bill_no'=>$bill,'Item'=>'__S33_NUMERIC__','ItemID'=>$id,'qnty'=>$qty])],$s->cookie);
+        $r=characterization_http($s->base,characterization_prepare_post($s->base,['label'=>'overflow','method'=>'POST','path'=>'/Sales.php','body'=>http_build_query(['bill_no'=>$bill,'Item'=>'__S33_NUMERIC__','ItemID'=>$id,'qnty'=>$qty])],$s->cookie),$s->cookie);
         $s->check($r['status']===400 && !characterization_errors($r['body']),'input overflow clean rejection');
     }
     $s->db->exec("UPDATE canteen_item SET SalesPrice=99999999999.999 WHERE ItemID=$id");
-    $r=characterization_http($s->base,['label'=>'product-overflow','method'=>'POST','path'=>'/Sales.php','body'=>http_build_query(['bill_no'=>$bill,'Item'=>'__S33_NUMERIC__','ItemID'=>$id,'qnty'=>'20'])],$s->cookie);
+    $r=characterization_http($s->base,characterization_prepare_post($s->base,['label'=>'product-overflow','method'=>'POST','path'=>'/Sales.php','body'=>http_build_query(['bill_no'=>$bill,'Item'=>'__S33_NUMERIC__','ItemID'=>$id,'qnty'=>'20'])],$s->cookie),$s->cookie);
     $s->check($r['status']===400 && !characterization_errors($r['body']) && $stock()==='10.001' && !$s->value('SELECT COUNT(*) FROM canteen_sales_detail WHERE SalesID=?',[$bill]),'extension overflow preserves entire bill and stock');
     // Force strict DECIMAL overflow after the stock UPDATE: the real transaction must roll back.
     $s->db->exec("UPDATE canteen_item SET SalesPrice=1 WHERE ItemID=$id");
     $s->db->exec("CREATE TRIGGER s33_overflow BEFORE INSERT ON canteen_sales_detail FOR EACH ROW SET NEW.Amt=1000000000000");
     try {
-        $r=characterization_http($s->base,['label'=>'forced-rollback','method'=>'POST','path'=>'/Sales.php','body'=>http_build_query(['bill_no'=>$bill,'Item'=>'__S33_NUMERIC__','ItemID'=>$id,'qnty'=>'1.2345'])],$s->cookie);
+        $r=characterization_http($s->base,characterization_prepare_post($s->base,['label'=>'forced-rollback','method'=>'POST','path'=>'/Sales.php','body'=>http_build_query(['bill_no'=>$bill,'Item'=>'__S33_NUMERIC__','ItemID'=>$id,'qnty'=>'1.2345'])],$s->cookie),$s->cookie);
         file_put_contents($out.'/forced-rollback.html.private',$r['body']);
         $s->check(str_contains($r['body'],'Out of range value') && $stock()==='10.001' && !$s->value('SELECT COUNT(*) FROM canteen_sales_detail WHERE SalesID=?',[$bill]),'strict overflow mid-transaction rollback');
     } finally { $s->db->exec('DROP TRIGGER s33_overflow'); }

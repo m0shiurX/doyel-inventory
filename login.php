@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
+csrf_check_post();
 $loginError = '';
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $username = (is_string($_POST['username'] ?? null) ? $_POST['username'] : '');
@@ -9,6 +10,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     catch (UnsupportedPasswordHash $error) { $loginError = $error->getMessage(); }
     if ($user !== null) {
         session_regenerate_id(true);
+        unset($_SESSION['csrf_token']);
+        csrf_token();
         $_SESSION['Username'] = $user->UserName;
         $_SESSION['admin'] = $user->userAtho;
         $_SESSION['user_id'] = (int)$user->user_id;
@@ -59,7 +62,7 @@ case 'password':
 <img width="200" height="175" src="images/login_icon.gif">
 <br><br>
 
-<form method="post" action="login.php" name="loginform" id="loginform">
+<form method="post" action="login.php" name="loginform" id="loginform"><?php csrf_field(); ?>
 
 		Username:
                 <input autocomplete="off" onKeyUp="if(event.keyCode==13) setfocus1(this.name);" type="text" name="username" id="username" /><br />
