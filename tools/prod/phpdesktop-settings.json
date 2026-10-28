@@ -1,0 +1,16 @@
+{
+  "web_server": {
+    "listen_on": ["127.0.0.1", 0],
+    "www_directory": "www",
+    "index_files": ["index.php"],
+    "cgi_interpreter": "php/php-cgi.exe",
+    "cgi_extensions": ["php"],
+    "cgi_temp_dir": "C:/Doyel-private/cgi-temp",
+    "404_handler": "",
+    "hide_files": [".*", "config.local.php", "config.sample.php", "*.sql", "*.log", "*.json", "*.txt", "*.cnf", "*.ini", "*.bak"]
+  },
+  "debugging": {
+    "show_console": false,
+    "log_file": "C:/Doyel-private/phpdesktop.log"
+  }
+}

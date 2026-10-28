@@ -23,6 +23,9 @@ Private source dumps, Phase 0 golden outputs and history recovery now also exist
 
 ## Integration follow-ups
 
+Historical handoffs below are now resolved by S2.10, S3.3 and S4.3; their slice
+reports contain the final verification. They are retained as implementation context.
+
 - S4.3: forced PDO exceptions in S2.7/S2.3 currently produce a development fatal body with HTTP 200; the global handler must explicitly set 500 and clear buffered partial output. Normal requests are diagnostic-free.
 - S2.10: inspect username length consistency before accepting new users. Business tables use 30-character usernames; user creation must not create identities that strict-mode bill/cash writes cannot store.
 - S4.3/S4.5: verify exception logs cannot be downloaded through the web server; prefer a private configurable location outside the public document root if server-specific rules cannot reliably protect `logs/`.
@@ -70,3 +73,30 @@ after the successful page capture; its test server is stopped. Private outputs
 are `/private/tmp/doyel-fixtures/release-scenarios` and `release-pages`. Preserve
 the durable fixture/recovery copies described above. No branch/worktree exists
 for this work; continue on main with a reviewed commit after each slice.
+
+## Resumed for S4.5 (2026-10-28)
+
+The owner explicitly resumed work. The final 52-label/five-sample performance
+run and one-shot snapshot passed with zero diagnostics and constant query
+counts; see `docs/perf/phase4.md`. MySQL logging settings were restored and the
+port-8146 server stopped. The isolated release DB now contains nine snapshots
+because the single measured save was real.
+
+The S4.5 implementation agent completed the runbook, sanitized release and CLI
+preflight/verification tools and rehearsed the exact local migration and rollback
+sequence. The orchestrator reviewed the slice and final verification. All planned
+repository slices are complete; no further implementation is currently pending.
+
+See `docs/runbooks/cutover.md` for the owner procedure and `docs/reports/S4.5.md`
+for commands and results. Restricted-account original/restored releases each
+matched all 77 comparison files, with zero modern diagnostics; all 13 tables
+matched exact row bytes. Legacy fallback and both roles were verified, preserving
+known legacy diagnostics. Final lint passed all 89 PHP files. Temporary S4.5
+servers are stopped; private evidence/dumps remain outside git.
+
+Remaining owner gates: actual Windows PHP 8.4 CGI/launch/extensions, HTTP file
+denial and loopback binding, keyboard/printing/download/restore, service/path/ACL
+inventory, a real off-machine backup, live cleanup-preview sign-off and production
+deployment. MySQL 8.4 is locally verified; MariaDB requires separate acceptance.
+No production changes were performed. Follow these gates rather than treating
+local PHP CLI/container tests as Windows acceptance.

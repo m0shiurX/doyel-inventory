@@ -63,16 +63,32 @@ The S4.1 baseline already includes all approved Phase 3 data/schema changes;
 earlier intentional differences are documented by their slice reports. No new
 comparison normalization was introduced for release verification.
 
-## Remaining after the requested pause
+## Continuation and final performance
 
-The owner requested a pause after the current S4.4 work. The full final
-52-label/five-sample performance run and separate one-shot stock snapshot are
-not yet run; earlier phase and S4.1 measurements remain historical evidence.
-S4.5 implementation and the full local cut-over/rollback rehearsal also remain.
-Read-only Windows runtime research has been prepared for that slice, with no
-production action or implementation implied. Actual Windows launch, printing
-and deployment acceptance remain owner-run gates.
+The owner requested a pause after S4.4, then explicitly resumed on 2026-10-28.
+The final 52-label/five-sample run (260 requests) and separate one-shot stock
+snapshot have now passed with zero diagnostics. Snapshot creation took
+21.290 ms and four queries; exactly one new snapshot was created. Read query
+counts remained constant and matched Phase 2. The independent post-run check
+confirmed `general_log=0`, `log_output=FILE` and unchanged default strict SQL
+mode. See [final performance](../perf/phase4.md) for all measurements and commands.
+
+S4.5 implementation and its full local cut-over/rollback rehearsal passed;
+see [S4.5 evidence](S4.5.md) and the [owner runbook](../runbooks/cutover.md).
+The sanitized release and its restored backup each match all 77 page comparison
+files with zero modern diagnostics. Exact data comparisons cover all 13 tables;
+both roles, a posted sale/void with stock reversal, restricted-account backup,
+38 static assets, migration order and legacy fallback were verified locally.
+Final lint covers all 89 PHP files; settings JSON and relative document links
+are valid. All planned repository slices are implemented and reviewed.
+
+Actual Windows CGI/launch, loopback and HTTP file denial, printing, service/path/
+ACL acceptance, a real off-machine backup and live-data sign-off remain owner-run
+production gates. The local legacy fallback retained its existing diagnostics,
+with business output matching the frozen baseline. MariaDB has not been tested.
+Production has not been changed.
 
 The orchestrator stopped its release verification HTTP server on port 8146
-after the successful scenario/page checks. Private fixture evidence remains in
-the paths above for the next authorized continuation.
+after both the original scenario/page checks and the final performance run.
+Private evidence remains in the paths above and `perf/release-full` /
+`perf/release-snapshot` under the external fixture directory.
