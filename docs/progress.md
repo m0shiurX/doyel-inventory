@@ -33,3 +33,40 @@ Private source dumps, Phase 0 golden outputs and history recovery now also exist
 ## Windows runtime sources (checked 2026-10-28)
 
 The owner confirmed Windows 10/11. The [PHP Desktop Windows 130.1 release](https://github.com/cztomczak/phpdesktop/releases/tag/chrome-v130.1) bundles PHP 8.3 and records broken native JS dialogs. S4.1 must use an HTML confirmation path for deletion. The [official interpreter upgrade instructions](https://github.com/cztomczak/phpdesktop/wiki/Knowledge-Base#php-interpreter--extensions) describe replacing the PHP directory with official x64 NTS binaries; S4.5 must verify PHP 8.4 CGI/extensions/Argon2id and actual Windows launch/printing. These source facts do not constitute a Windows runtime rehearsal.
+
+## Requested pause after S4.4 (2026-10-28)
+
+The owner requested finishing the current work, then pausing. S4.1–S4.4 are
+implemented and reviewed for direct commits on main. The combined release
+verification passed all nine write scenarios (89 HTTP steps) and all 77 page
+comparison files with zero differences or diagnostics. See
+`docs/reports/release-verification.md` and the individual S4 reports.
+
+S4.4 keyboard workflows passed in actual Chrome and Firefox; both complete
+frontend inventories had zero errors. Temporary Migrate reported only the
+existing Quirks Mode warning, recorded in `docs/reports/S4.4.md`. The owner
+explicitly authorized Firefox's first-run terms acceptance during testing.
+Temporary S4.4 servers/harnesses/browser window/mount and the orchestrator's
+port-8146 release server were cleaned up. Private evidence is retained.
+
+Do not start S4.5 or further measurements until the owner requests continuation.
+Remaining work:
+
+1. Implement S4.5: sanitized runtime packaging/private configuration, Windows
+   preflight and owner-run cut-over runbook, followed by a full local migration
+   and rollback rehearsal. The `s45_cutover` agent completed read-only research
+   only; no S4.5 files or tests were produced.
+2. Run final full performance verification: 52 labels × five requests plus one
+   separately measured snapshot POST, with exclusive database traffic. Inherit
+   all migration/cleanup/dedup flags on every reset. Earlier phase/S4.1 timings
+   remain historical, not final release measurements.
+3. Owner-run Windows 10/11 runtime/CGI/extensions, launch, keyboard, printing and
+   backup/restore acceptance, then production deployment. Production remains
+   untouched. MySQL 8.4 is locally verified; MariaDB remains an alternative that
+   requires separate verification.
+
+For continuation, isolated `doyel_release` contains the full 001–004 fixture
+after the successful page capture; its test server is stopped. Private outputs
+are `/private/tmp/doyel-fixtures/release-scenarios` and `release-pages`. Preserve
+the durable fixture/recovery copies described above. No branch/worktree exists
+for this work; continue on main with a reviewed commit after each slice.

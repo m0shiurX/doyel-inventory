@@ -8,7 +8,7 @@ require_login();
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <link href="css/Style.css" rel="stylesheet" type="text/css">
  <link href="css/lessframework4.css" rel="stylesheet" type="text/css">
- <script type="text/javascript" src="codes/jquery-1.5.min.js"></script>
+ <script type="text/javascript" src="codes/jquery-3.7.1.min.js"></script>
 <div id="main">
 	<?php include("menu.php"); ?>
 
@@ -17,7 +17,7 @@ require_login();
     <form name="form" method="post" action="">
       <table width="100%" border="0" cellspacing="0" cellpadding="0">
           <tr>
-            <td width="11%"><strong>Search Customer &nbsp;</strong><input onKeyPress="return dg(event);" name="MemberName" type="text" id="MemberName"></td>
+            <td width="11%"><strong>Search Customer &nbsp;</strong><input name="MemberName" type="text" id="MemberName"></td>
             <td width="23%"><a href="add_member.php">Add Customer</a> </td>
           </tr>
         </table>
@@ -58,7 +58,7 @@ require_login();
       grid = $('#userGrid');
 
       // handle search fields of members key up event
-      $('#MemberName').keyup(function(e) {
+      $('#MemberName').on('keyup', function(e) {
         text = $(this).val(); // grab search term
 
         if(text.length > 1) {

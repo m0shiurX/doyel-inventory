@@ -99,7 +99,6 @@ $TotalAmount = $Post === 'Posted' ? $bill->Total : $Sum;
 <link rel="stylesheet" type="text/css" href="codes/bnspell.css">
 
 <script type="text/javascript" src="codes/keyshortcut.js"></script>
-<script type="text/javascript" src="codes/prototype.js"></script>
 <script type="text/javascript" src="codes/bnspell.js"></script>
 <script type="text/javascript" src="codes/select.js"></script>
 <script type="text/javascript">var L="bnw2";</script>
@@ -202,6 +201,7 @@ $TotalAmount = $Post === 'Posted' ? $bill->Total : $Sum;
 
 
   function ThisAmount(str) {
+  if (typeof str === "undefined") str = document.dm.qnty.value;
   var rate=dm.rate.value;
   var amt=str*rate;
   document.dm.amount.value=(amt);
@@ -285,11 +285,11 @@ if ($bill !== null) {
           </select>
           </td>
           <td><strong>Quantity</strong></td>
-          <td><input name="qnty" id="qnty" type="text" autocomplete="off" onKeyUp="if(event.keyCode==13) setfocus1(this.name); else ThisAmount(this.value);" onKeyPress="if(event.keyCode==38) incr(this.value); else if(event.keyCode==40) decr(this.value);" onClick="showPrice(Item.value, 'sales')" size="12">        </td>
+          <td><input name="qnty" id="qnty" type="text" autocomplete="off" onKeyUp="if(event.keyCode==13) setfocus1(this.name); else ThisAmount(this.value);" onKeyDown="if(event.key==='ArrowUp'){incr(this.value);event.preventDefault();} else if(event.key==='ArrowDown'){decr(this.value);event.preventDefault();}" onClick="showPrice(Item.value, 'sales')" size="12">        </td>
         </tr>
         <tr>
           <td><strong>Item</strong></td>
-          <td><input onKeyDown="return dn(event);" onKeyPress="return dg(event);"onKeyUp="if(event.keyCode==13) showPrice(this.value, 'sales') & setfocus1(this.name);" type="text" id="Item" name="Item" size="32" style="font-size: 14pt">          </td>
+          <td><input onKeyUp="if(event.keyCode==13) showPrice(this.value, 'sales') & setfocus1(this.name);" type="text" id="Item" name="Item" size="32" style="font-size: 14pt">          </td>
           <td><label><strong>Amount</strong></label></td>
           <td><input name="amount" type="text" id="amount" size="12" readonly></td>
         </tr>

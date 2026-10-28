@@ -67,7 +67,7 @@ if ($ID > 0) {
         <tr>
           <td>Name (Bangla) </td>
           <td><label>
-                  <input onKeyPress="return dg(event);" name="name" type="text" id="name" size="30" value="<?= e($name) ?>">
+                  <input name="name" type="text" id="name" size="30" value="<?= e($name) ?>">
           </label></td>
         </tr>
         <tr>
@@ -85,7 +85,7 @@ if ($ID > 0) {
         <tr>
           <td>Present Address</td>
           <td><label>
-            <textarea onKeyPress="return dg(event);" name="address" cols="40" id="address"><?= e($address) ?></textarea>
+            <textarea name="address" cols="40" id="address"><?= e($address) ?></textarea>
           </label></td>
         </tr>
         <tr>

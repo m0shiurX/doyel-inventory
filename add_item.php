@@ -57,6 +57,8 @@ if ($ID > 0) {
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <link href="css/Style.css" rel="stylesheet" type="text/css">
     <link href="css/lessframework4.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" type="text/css" href="codes/bnspell.css">
+    <script type="text/javascript" src="codes/bnspell.js"></script>
     <script type="text/javascript">
         window.onload = function()
         {
@@ -86,7 +88,7 @@ if ($ID > 0) {
       </tr>
       <tr>
         <td width="17%">Item Name</td>
-        <td width="27%"><input onKeyPress="return dg(event);" name="Item" type="text" id="Item" size="30" value="<?= e($ItemName) ?>"></td>
+        <td width="27%"><input name="Item" type="text" id="Item" size="30" value="<?= e($ItemName) ?>"></td>
         <td width="11%">Pur Price</td>
         <td width="19%"><input name="PurPrice" type="text" id="PurPrice" value="<?= e(fmt_numeric($PurPrice)) ?>"></td>
         <td width="26%">Min</td>
@@ -96,7 +98,7 @@ if ($ID > 0) {
         <td>Supplier Name</td>
         <td>
           <label>
-            <input onKeyPress="return dg(event);" name="supplier" value="Doyel Eng" type="text" id="supplier" size="30" value="<?= e($SupplierName) ?>"/>
+            <input name="supplier" value="Doyel Eng" type="text" id="supplier" size="30" value="<?= e($SupplierName) ?>"/>
           </label>
         </td>
         <td>Sales Price</td>

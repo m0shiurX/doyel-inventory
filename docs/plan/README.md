@@ -105,5 +105,5 @@ Phase 2 can start as soon as Phase 0 is merged. It doesn't wait for Phase 1.
 | S4.1 | POST + CSRF for destructive actions | merged |
 | S4.2 | Admin backup download | merged |
 | S4.3 | Error handling and logging | merged |
-| S4.4 | Front-end library refresh | todo |
+| S4.4 | Front-end library refresh | merged |
 | S4.5 | Production cut-over runbook | todo |

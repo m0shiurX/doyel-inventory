@@ -1,67 +1,52 @@
-
-RegExp.escape = function(text)
-{
-    if (!arguments.callee.sRE)
-    {
-        var specials = [
-            '/', '.', '*', '+', '?', '|',
-            '(', ')', '[', ']', '{', '}', '\\'
-        ];
-    
-        arguments.callee.sRE = new RegExp(
-            '(\\' + specials.join('|\\') + ')', 'g'
-        );
-    }
-  
-    return text.replace(arguments.callee.sRE,'\\$1');
-};
-
-
-var BComplete = Class.create();
-BComplete.prototype = 
+// Local item/supplier completion; no framework dependency.
+function BComplete(element, max) { this.initialize(element, max); }
+function escapeCompletionPattern(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+BComplete.prototype =
 {
     MAX_VISIBLE : 8,
     TIMER_TICK : 10,
     CANCEL_SUBMISSION_TIMEOUT : 10,
-    
+
     initialize : function(element,max)
     {
         if(max)
         {
             this.MAX_VISIBLE = max;
         }
-    
+
         this.data = new Array();
-        this.element = $(element);
+        this.element = typeof element === "string" ? document.getElementById(element) : element;
         if(!this.element)
         {
             throw("BComplete: The specified <input> element does not exist.");
         }
-        
+
         this.element.setAttribute("autocomplete","off");
-        Element.addClassName(this.element,"bcomplete-field");
+        this.element.classList.add("bcomplete-field");
 
         this.visible = false;
         this.cancelSubmit = false;
         this.scroll = 0;
         this.selectedIndex = -1;
         this.matches = new Array();
-        
+
         this.popup = document.createElement("div");
-        Element.hide(this.popup);
+        this.popup.style.display = "none";
         this.popup.className = "bcomplete-popup";
         document.body.appendChild(this.popup);
-        
-        this.upButton = document.createElement("div");        
+
+        this.upButton = document.createElement("div");
         this.upButton.className = "up-button";
-        this.popup.appendChild(this.upButton);      
-        
+        this.popup.appendChild(this.upButton);
+
         this.listItems = new Array();
         for(var i=0;i<this.MAX_VISIBLE;i++)
         {
             var item = document.createElement("div");
             this.listItems[i] = item ;
-            item.className = "item";            
+            item.className = "item";
             this.popup.appendChild(item);
             item.autocomplete = this;
             item.number = i;
@@ -73,18 +58,13 @@ BComplete.prototype =
 
         this.downButton = document.createElement("div");
         this.downButton.className = "down-button";
-        this.popup.appendChild(this.downButton);       
+        this.popup.appendChild(this.downButton);
 
-        Event.observe(this.element,"keypress",
-            this.onKeyPress.bindAsEventListener(this));
-        Event.observe(this.element,"keydown",
-            this.onKeyDown.bindAsEventListener(this));
-        Event.observe(this.upButton,"click",
-            this.onUpButton.bindAsEventListener(this));
-        Event.observe(this.downButton,"click",
-            this.onDownButton.bindAsEventListener(this));
-        Event.observe(document,"click",
-            this.onWindowClick.bindAsEventListener(this));
+        this.element.addEventListener("input", this.onTick.bind(this));
+        this.element.addEventListener("keydown", this.onKeyDown.bind(this));
+        this.upButton.addEventListener("click", this.onUpButton.bind(this));
+        this.downButton.addEventListener("click", this.onDownButton.bind(this));
+        document.addEventListener("click", this.onWindowClick.bind(this));
 
         this.onTick = this.onTick.bind(this);
         this.onSubmit = this.onSubmit.bind(this);
@@ -93,7 +73,7 @@ BComplete.prototype =
         var parentForm = this.element.parentNode;
         while(parentForm)
         {
-            if(parentForm.tagName.toLowerCase() == "form")
+            if(parentForm.tagName && parentForm.tagName.toLowerCase() == "form")
                 break;
 
             parentForm = parentForm.parentNode;
@@ -118,10 +98,10 @@ BComplete.prototype =
     {
         this.data[this.data.length] = item;
         this.data.sort();
-    },  
-    
+    },
+
     setData : function(data)
-    {   
+    {
         this.data = data;
         data.sort();
     },
@@ -129,31 +109,30 @@ BComplete.prototype =
     loadData : function(url)
     {
         var me = this;
-        var success = function(request)
-        {  
-            try 
-            {
-                var data = eval(request.responseText);
-                if(typeof data == "object")
-                {
-                    me.setData(data);
-                }
-            }
-            catch(exception)
-            {
-                throw("BComplete: Invalid data format.");
-            }                        
-        };
-
-        var request = new Ajax.Request(url,
-            { method: 'get', onSuccess: success });
+        return fetch(url, {credentials: "same-origin"})
+            .then(function(response) {
+                if (!response.ok) throw new Error("BComplete: Dictionary request failed.");
+                return response.text();
+            })
+            .then(function(text) {
+                var data = JSON.parse(text);
+                if (!Array.isArray(data) || !data.every(function(item) { return typeof item === "string"; }))
+                    throw new Error("BComplete: Invalid data format.");
+                me.setData(data);
+                if (document.activeElement === me.element) me.onTick();
+            })
+            .catch(function(error) {
+                // Leave manual entry usable when the dictionary is unavailable.
+                me.hide();
+                console.error(error);
+            });
     },
 
     findMatches : function(text)
     {
         var matches = new Array();
-        var expression = new RegExp("^"+RegExp.escape(text),"i");
-        
+        var expression = new RegExp("^"+escapeCompletionPattern(text),"i");
+
         for(var i=0;i<this.data.length;i++)
         {
             if(this.data[i].match(expression))
@@ -179,8 +158,8 @@ BComplete.prototype =
 
     onWindowClick : function(event)
     {
-        var element = Event.element(event);
-        
+        var element = event.target;
+
         var parent = element;
         while(parent)
         {
@@ -189,7 +168,7 @@ BComplete.prototype =
             {
                 return;
             }
-            
+
             parent = parent.parentNode;
         }
 
@@ -204,30 +183,50 @@ BComplete.prototype =
             this.scroll = 0;
 
         this.show();
-        Event.stop(event);
+        event.preventDefault();
+        event.stopPropagation();
         this.element.focus();
     },
 
     onDownButton : function(event)
-    {    
+    {
         this.selectedIndex = -1;
         this.scroll++;
         if(this.scroll > (this.matches.length - this.MAX_VISIBLE))
-            this.scroll = (this.matches.length - this.MAX_VISIBLE);
+            this.scroll = Math.max(0, this.matches.length - this.MAX_VISIBLE);
 
         this.show();
-        Event.stop(event);
+        event.preventDefault();
+        event.stopPropagation();
         this.element.focus();
     },
 
     onKeyDown : function(event)
     {
-        if(event.keyCode == 13 && this.visible)
-        {
-            this.temporarilyDisableSubmission();        
-            this.select();
-            Event.stop(event);
-            return false;
+        if (event.isComposing) return;
+        if (event.key === "Enter") {
+            // Prevent implicit form submission; the page keyup handler advances
+            // from item to quantity/rate, and quantity Enter adds the line.
+            event.preventDefault();
+            if (this.visible) {
+                if (this.selectedIndex === -1) this.selectedIndex = this.scroll;
+                this.select();
+            }
+        } else if (event.key === "Tab" && this.visible) {
+            if (this.selectedIndex !== -1) this.select();
+            else this.hide();
+        } else if (event.key === "Escape") {
+            this.hide();
+        } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            if (!this.visible) this.matches = this.findMatches(this.element.value);
+            if (!this.matches.length) return;
+            var direction = event.key === "ArrowDown" ? 1 : -1;
+            this.selectedIndex = Math.max(0, Math.min(this.matches.length - 1, this.selectedIndex + direction));
+            if (this.selectedIndex < this.scroll) this.scroll = this.selectedIndex;
+            if (this.selectedIndex >= this.scroll + this.MAX_VISIBLE)
+                this.scroll = this.selectedIndex - this.MAX_VISIBLE + 1;
+            this.show();
         }
     },
 
@@ -238,68 +237,6 @@ BComplete.prototype =
         this.show();
     },
 
-    onKeyPress : function(event)
-    {           
-        if(event.keyCode == Event.KEY_TAB)
-        {        
-            if(this.visible)
-            {
-                this.select();
-                Event.stop(event);
-                return false;
-            }
-        }
-        else if(event.keyCode == Event.KEY_DOWN)
-        {
-            this.selectedIndex++;
-            if(this.selectedIndex < this.scroll)
-                this.selectedIndex = this.scroll;
-
-            if(this.selectedIndex >= this.matches.length)
-                this.selectedIndex = this.matches.length - 1;          
-            
-            if(this.scroll <= (this.selectedIndex - this.MAX_VISIBLE))
-                this.scroll++;
-
-            if(this.matches.length == 0)
-            {
-                this.matches = this.findMatches(this.element.value);
-            }
-            
-            this.show();    
-            Event.stop(event);
-            return;
-        }
-        else if(event.keyCode == Event.KEY_UP)
-        {            
-            this.selectedIndex--;
-            if(this.selectedIndex <= -1 && this.scroll <= 0)
-            {
-                this.selectedIndex = -1;
-                this.hide();
-                Event.stop(event);
-                return;
-            }
-
-            if(this.selectedIndex <= -1)
-                this.selectedIndex = this.scroll + (this.MAX_VISIBLE - 1);
-
-            if(this.scroll > this.selectedIndex)
-                this.scroll--;
-
-            this.show();            
-            Event.stop(event);
-            return;
-        }
-        else if(event.keyCode != 13)
-        {
-            if(this.timerId)
-                clearTimeout(this.timerId);
-
-            this.timerId = setTimeout(this.onTick,this.TIMER_TICK);
-        }
-    },
-
     onTick : function()
     {
         this.selectedIndex = -1;
@@ -308,7 +245,7 @@ BComplete.prototype =
         {
             this.matches = this.findMatches(this.element.value);
             if(this.matches.length > 0)
-                this.show();            
+                this.show();
             else
                 this.hide();
         }
@@ -334,89 +271,98 @@ BComplete.prototype =
     onItemOn : function()
     {
         for(var i=0;i<this.autocomplete.MAX_VISIBLE;i++)
-            Element.removeClassName(this.autocomplete.listItems[i],"selected");
-        
-        Element.addClassName(this,"selected");
+            this.autocomplete.listItems[i].classList.remove("selected");
+
+        this.classList.add("selected");
         this.autocomplete.selectedIndex = this.number;
     },
 
     onItemOff : function()
     {
-        Element.removeClassName(this,"selected");
+        this.classList.remove("selected");
         this.autocomplete.selectedIndex = -1;
     },
 
     onItemClick : function()
     {
         this.autocomplete.selectedIndex = this.number;
-        this.autocomplete.select();       
+        this.autocomplete.select();
     },
 
     show : function()
-    {  
+    {
         if(this.matches.length <= 0)
             return ;
 
         var text = this.element.value;
-        var expression = new RegExp("("+RegExp.escape(text)+")","i");
-    
+        var expression = new RegExp("("+escapeCompletionPattern(text)+")","i");
+
         if(this.scroll > 0)
-            Element.removeClassName(this.upButton,"disabled")
+            this.upButton.classList.remove("disabled")
         else
-            Element.addClassName(this.upButton,"disabled")
+            this.upButton.classList.add("disabled")
 
         if((this.scroll + this.MAX_VISIBLE) < this.matches.length)
-            Element.removeClassName(this.downButton,"disabled")
+            this.downButton.classList.remove("disabled")
         else
-            Element.addClassName(this.downButton,"disabled")
+            this.downButton.classList.add("disabled")
 
         for(var i=0;i<this.MAX_VISIBLE;i++)
-        { 
+        {
             if(this.matches[i+this.scroll])
             {
                 var text = this.matches[i+this.scroll];
-                text = text.replace(expression,"<strong>$1</strong>");
-                this.listItems[i].innerHTML = text;
+                var item = this.listItems[i];
+                item.textContent = "";
+                var match = expression.exec(text);
+                if (match && match[0]) {
+                    item.appendChild(document.createTextNode(text.slice(0, match.index)));
+                    var strong = document.createElement("strong");
+                    strong.textContent = match[0];
+                    item.appendChild(strong);
+                    item.appendChild(document.createTextNode(text.slice(match.index + match[0].length)));
+                } else item.textContent = text;
                 this.listItems[i].number = i + this.scroll;
                 this.listItems[i].value = this.matches[i+this.scroll];
-                
+
                 if(this.selectedIndex == (this.scroll + i))
-                    Element.addClassName(this.listItems[i],"selected");
+                    this.listItems[i].classList.add("selected");
                 else
-                    Element.removeClassName(this.listItems[i],"selected");                
-                
-                Element.show(this.listItems[i]);
+                    this.listItems[i].classList.remove("selected");
+
+                this.listItems[i].style.display = "block";
             }
             else
             {
-                Element.hide(this.listItems[i]);
+                this.listItems[i].style.display = "none";
             }
         }
-            
-        this.visible = true;        
-        Element.show(this.popup);
+
+        this.visible = true;
+        this.popup.style.display = "block";
         this.setPopupPosition();
     },
 
     setPopupPosition : function()
     {
-        var position = Position.cumulativeOffset(this.element);
-        var scrollY = document.body.scrollTop ? 
+        var rect = this.element.getBoundingClientRect();
+        var position = [rect.left + window.scrollX, rect.top + window.scrollY];
+        var scrollY = document.body.scrollTop ?
             document.body.scrollTop : document.documentElement.scrollTop;
-        var viewHeight = (navigator.userAgent.toLowerCase().indexOf("safari") != -1 && 
-            window.innerHeight) ? window.innerHeight : 
+        var viewHeight = (navigator.userAgent.toLowerCase().indexOf("safari") != -1 &&
+            window.innerHeight) ? window.innerHeight :
                 document.documentElement.clientHeight;
-        
+
         this.popup.style.width = (this.element.offsetWidth - 2) + "px";
         this.popup.style.left = position[0] + "px";
-        
-        var popupTop = position[1] + Element.getHeight(this.element);
+
+        var popupTop = position[1] + this.element.offsetHeight;
         if((popupTop + this.popup.offsetHeight > scrollY + viewHeight) &&
            (position[1] - this.popup.offsetHeight > scrollY))
         {
             popupTop = position[1] - this.popup.offsetHeight;
         }
-        
+
         this.popup.style.top = popupTop + "px";
     },
 
@@ -426,16 +372,16 @@ BComplete.prototype =
         this.selectedIndex = -1;
         this.scroll = 0;
         this.visible = false;
-        Element.hide(this.popup);
+        this.popup.style.display = "none";
     },
 
     select : function()
-    {   
+    {
         if(this.selectedIndex != -1)
         {
             this.element.value = this.matches[this.selectedIndex];
         }
-        
+
         this.hide();
     }
 };

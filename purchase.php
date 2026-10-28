@@ -85,7 +85,6 @@ $TotalAmount = $Sum;
 <link href="css/lessframework4.css" rel="stylesheet" type="text/css">
 <link rel="stylesheet" type="text/css" href="codes/bnspell.css">
 <script type="text/javascript" src="codes/keyshortcut.js"></script>
-<script type="text/javascript" src="codes/prototype.js"></script>
 <script type="text/javascript" src="codes/bnspell.js"></script>
 <script type="text/javascript" src="codes/select.js"></script>
 <script type="text/javascript">var L="bnw2";</script>
@@ -106,7 +105,7 @@ $TotalAmount = $Sum;
   document.getElementById("new_bill").submit();
       });
       shortcut.add("alt+p", function() {
-    document.forms["form2"].submit();
+    return submitformPost();
       });
     shortcut.add("alt+m", function() {
       return bill();
@@ -223,13 +222,13 @@ if ($BillInfo !== null) {
         </tr>
         <tr>
           <td><strong>Supplier</strong></td>
-          <td><input onKeyDown="return dn(event);" name="supplier" type="text" id="supplier" value="Doyel Eng" size="42"></td>
+          <td><input name="supplier" type="text" id="supplier" value="Doyel Eng" size="42"></td>
           <td><strong>Quantity</strong></td>
-          <td><input name="qnty" type="text" id="qnty" autocomplete="off" onKeyUp="if(event.keyCode==13)  setfocus1(this.name); else ThisAmount(this.value);" onKeyPress="if(event.keyCode==38) incr(this.value); else if(event.keyCode==40) decr(this.value);" onClick="showPrice(Item.value, 'Pur')"></td>
+          <td><input name="qnty" type="text" id="qnty" autocomplete="off" onKeyUp="if(event.keyCode==13)  setfocus1(this.name); else ThisAmount(this.value);" onKeyDown="if(event.key==='ArrowUp'){incr(this.value);event.preventDefault();} else if(event.key==='ArrowDown'){decr(this.value);event.preventDefault();}" onClick="showPrice(Item.value, 'Pur')"></td>
         </tr>
         <tr>
           <td><strong>Item</strong></td>
-          <td><input onKeyDown="return dn(event);" onKeyUp="if(event.keyCode==13) showPrice(this.value, 'Pur') & setfocus1(this.name);" type="text" id="Item" name="Item" size="32" style="font-size: 14pt">          </td>
+          <td><input onKeyUp="if(event.keyCode==13) showPrice(this.value, 'Pur') & setfocus1(this.name);" type="text" id="Item" name="Item" size="32" style="font-size: 14pt">          </td>
           <td><label><strong>Amount</strong></label></td>
           <td><input name="amount" type="text" id="amount" readonly></td>
         </tr>

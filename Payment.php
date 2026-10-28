@@ -30,7 +30,7 @@ $payments = $Nickname !== '' ? db_all('SELECT PaymentID, Date, UserName, Descrip
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <link href="css/Style.css" rel="stylesheet" type="text/css">
     <link href="css/lessframework4.css" rel="stylesheet" type="text/css">
-    <script type="text/javascript" src="codes/jquery-1.5.min.js"></script>
+    <script type="text/javascript" src="codes/jquery-3.7.1.min.js"></script>
     <style type="text/css">
       @media print {
           body{
@@ -74,7 +74,7 @@ $payments = $Nickname !== '' ? db_all('SELECT PaymentID, Date, UserName, Descrip
     <?php include("menu.php"); ?>
 <div style="margin:20px 0;">
 <div class="report listou">
-  <h2><strong>Search Customer &nbsp;</strong><input onKeyPress="return dg(event);" name="MemberName" type="text" id="MemberName"></h2>
+  <h2><strong>Search Customer &nbsp;</strong><input name="MemberName" type="text" id="MemberName"></h2>
 
 
   <div  id="userGrid" class="scrollbar">
@@ -205,7 +205,7 @@ foreach ($payments as $Detail) {
     grid = $('#userGrid');
 
     // handle search fields of members key up event
-    $('#MemberName').keyup(function(e) {
+    $('#MemberName').on('keyup', function(e) {
       text = $(this).val(); // grab search term
 
       if(text.length > 1) {

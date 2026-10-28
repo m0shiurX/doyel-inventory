@@ -39,7 +39,7 @@ $movements = db_all('SELECT Date, BillNo, Qnty, QT FROM (
 <table class="result"></table>
 <input type="submit" name="Submit" value="Search" />
 </div>
-<script src="AutoSuggestDropDown/jquery-1.7.1.min.js"></script>
+<script src="../codes/jquery-3.7.1.min.js"></script>
 <script src="AutoSuggestDropDown/primary.js"></script>
 </form>
 </div>

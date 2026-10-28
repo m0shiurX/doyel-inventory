@@ -35,7 +35,7 @@ background-color: #cef; /* pale blue for even rows */
     cursor: pointer;
 }
 
-.result tr:hover{
+.result tr:hover, .result tr.selected{
     background: #000;
     color: #fff;
 }

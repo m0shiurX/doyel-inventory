@@ -17,11 +17,11 @@ if ($selectedName !== '' && is_numeric($amountInput) && is_finite((float)$amount
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <link href="css/Style.css" rel="stylesheet" type="text/css">
     <link href="css/lessframework4.css" rel="stylesheet" type="text/css">
-<script src="report/AutoSuggestDropDown/jquery-1.7.1.min.js"></script>
+<script src="codes/jquery-3.7.1.min.js"></script>
         <script type="text/javascript">
         $(function() {
 
-            $('#button').click(function() {
+            $('#button').on('click', function() {
                 $('#subform').append('<img src="img/loading.gif" class="loading" width="16" height="16">');
                 var SupplierName= $('#SupplierName').val();
                 $.ajax({
