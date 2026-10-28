@@ -49,9 +49,9 @@ $typeName = static fn(string $type): string => match ($type) {
 <tr id="<?= e($row->ItemID) ?>">
 <td><?= e($row->ItemID) ?></td>
 <td><?= e($row->ItemName) ?></td>
-<td><?= e($row->PurPrice) ?></td>
-<td><?= e($row->SalesPrice) ?></td>
-<td><?= e($row->Qnty) ?></td>
+<td><?= e(fmt_numeric($row->PurPrice)) ?></td>
+<td><?= e(fmt_numeric($row->SalesPrice)) ?></td>
+<td><?= e(fmt_numeric($row->Qnty)) ?></td>
 </tr>
 <?php endforeach; ?>
 <tr>
@@ -59,7 +59,7 @@ $typeName = static fn(string $type): string => match ($type) {
 <th><b>Sub Total &nbsp;&nbsp; <?= e($summary->sub_total) ?></b></th>
 <th><b><?= e(round((float)$summary->GroupPurPrice, 2)) ?></b></th>
 <th><b><?= e(round((float)$summary->GroupSalesPrice, 2)) ?></b></th>
-<th><b><?= e($summary->Quantity) ?></b></th>
+<th><b><?= e(fmt_numeric($summary->Quantity)) ?></b></th>
 </tr>
 <?php
 $Total += (int)$summary->sub_total;

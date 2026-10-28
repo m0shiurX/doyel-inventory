@@ -8,4 +8,5 @@ if (PHP_SAPI !== 'cli' && ob_get_level() === 0) ob_start();
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/html.php';
+require_once __DIR__ . '/numeric.php';
 require_once __DIR__ . '/auth.php';

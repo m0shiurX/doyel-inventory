@@ -55,9 +55,9 @@ foreach ($members as $Member) {
 $Qnty = 0;
 $sl = 1;
 foreach ($details as $Detail) {
-    print '<tr><td>' . $sl++ . '</td><td>' . e($Detail->ItemName) . '</td><td>' . e($Detail->Rate) . '</td>';
-    print '<td style="text-align:right; padding-right: 40px;">' . e($Detail->Qnty) . '</td>';
-    print '<td style="text-align:right; padding-right: 40px;">' . e($Detail->Amt) . '</td></tr>';
+    print '<tr><td>' . $sl++ . '</td><td>' . e($Detail->ItemName) . '</td><td>' . e(fmt_numeric($Detail->Rate)) . '</td>';
+    print '<td style="text-align:right; padding-right: 40px;">' . e(fmt_numeric($Detail->Qnty)) . '</td>';
+    print '<td style="text-align:right; padding-right: 40px;">' . e(fmt_numeric($Detail->Amt)) . '</td></tr>';
     $Qnty += (float)$Detail->Qnty;
 }
 ?>
@@ -65,7 +65,7 @@ foreach ($details as $Detail) {
               <th colspan="3">Total :</th>
 <!--               <th>&nbsp;</th> -->
               <th style="text-align:right; padding-right: 40px;"><?= e($details ? $Qnty : '') ?></th>
-              <th style="text-align:right; padding-right: 15px;"><?= e($Total) ?> Tk</th>
+              <th style="text-align:right; padding-right: 15px;"><?= e(fmt_money($Total)) ?> Tk</th>
             </tr>
             <?php
             if ($Disc==0) {
@@ -75,14 +75,14 @@ foreach ($details as $Detail) {
               <td colspan='3'>Discount :</td>
 <!--               <td>&nbsp;</td> -->
               <td>&nbsp;</td>
-              <td  style="text-align:right; padding-right: 15px;"><?= e($Disc) ?> Tk</td>
+              <td  style="text-align:right; padding-right: 15px;"><?= e(fmt_numeric($Disc)) ?> Tk</td>
             </tr>
 
             <tr>
               <th colspan="3">Net Amount :</th>
 <!--               <td>&nbsp;</td> -->
               <td>&nbsp;</td>
-              <th style="text-align:right; padding-right: 15px;"><?= e($NetTotal) ?> Tk</th>
+              <th style="text-align:right; padding-right: 15px;"><?= e(fmt_money($NetTotal)) ?> Tk</th>
             </tr>
 </table>
 

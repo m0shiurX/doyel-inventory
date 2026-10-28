@@ -5,11 +5,6 @@ function sales_text(array $source, string $key): string
 {
     return is_string($source[$key] ?? null) ? $source[$key] : '';
 }
-function sales_number(array $source, string $key): float
-{
-    $value = sales_text($source, $key);
-    return is_numeric($value) && is_finite((float)$value) ? (float)$value : 0.0;
-}
 function sales_id(array $source, string $key): int
 {
     $value = sales_text($source, $key);
@@ -34,22 +29,27 @@ if ($SalesID > 0 && sales_text($_GET, 'hPost') !== '') {
         $parent = db_one('SELECT Post, Credit FROM canteen_sales WHERE SalesID = ? FOR UPDATE', [$SalesID]);
         if ($parent === null || (int)$parent->Post !== 0 || (int)$parent->Credit === 2) return;
         // Header totals are derived from stored lines, never the readonly form fields.
-        $amount = (float)(db_value('SELECT SUM(Amt) FROM canteen_sales_detail WHERE SalesID = ?', [$SalesID]) ?? 0);
-        $discount = sales_number($_GET, 'discount');
+        $discount = input_decimal(sales_text($_GET, 'discount'));
+        $totals = db_one('SELECT COALESCE(SUM(Amt), 0) AS Amount, COALESCE(SUM(Amt), 0) - CAST(? AS DECIMAL(14,2)) AS Total FROM canteen_sales_detail WHERE SalesID = ?', [$discount, $SalesID]);
+        $amount = input_decimal($totals->Amount);
+        $total = input_decimal($totals->Total);
         $nickname = sales_text($_GET, 'Nickname');
-        db_exec('UPDATE canteen_sales SET CustomerName = ?, Amount = ?, Discount = ?, Total = ?, Post = ?, Note = ?, Credit = ? WHERE SalesID = ?', [$nickname, $amount, $discount, $amount - $discount, 1, sales_text($_GET, 'Note'), $nickname === 'Select Member' ? 0 : 1, $SalesID]);
+        db_exec('UPDATE canteen_sales SET CustomerName = ?, Amount = ?, Discount = ?, Total = ?, Post = ?, Note = ?, Credit = ? WHERE SalesID = ?', [$nickname, $amount, $discount, $total, 1, sales_text($_GET, 'Note'), $nickname === 'Select Member' ? 0 : 1, $SalesID]);
     });
 }
-$quantity = sales_number($_POST, 'qnty');
+$quantity = input_decimal(sales_text($_POST, 'qnty'), 12, 3);
 if ($SalesID > 0 && sales_text($_POST, 'Item') !== '' && $quantity != 0) {
     $itemID = sales_id($_POST, 'ItemID');
     db_tx(function () use ($SalesID, $itemID, $quantity): void {
         $parent = db_one('SELECT Post FROM canteen_sales WHERE SalesID = ? FOR UPDATE', [$SalesID]);
         if ($parent === null || (int)$parent->Post !== 0) return;
-        $item = db_one('SELECT ItemID, PurPrice, SalesPrice FROM canteen_item WHERE ItemID = ? FOR UPDATE', [$itemID]);
+        $item = db_one('SELECT ItemID, PurPrice, SalesPrice, Qnty - CAST(? AS DECIMAL(12,3)) AS RemainingStock FROM canteen_item WHERE ItemID = ? FOR UPDATE', [$quantity, $itemID]);
         if ($item === null) return;
-        if (db_exec('UPDATE canteen_item SET Qnty = Qnty - ? WHERE ItemID = ? AND Qnty >= ?', [$quantity, $itemID, $quantity]) !== 1) return;
-        db_exec('INSERT INTO canteen_sales_detail (SalesID, Date, ItemID, Qnty, PurAmt, Rate, Amt) VALUES (?, ?, ?, ?, ?, ?, ?)', [$SalesID, now_sql(), $itemID, $quantity, $quantity * (float)$item->PurPrice, $item->SalesPrice, $quantity * (float)$item->SalesPrice]);
+        $purAmount = decimal_product($quantity, $item->PurPrice);
+        $saleAmount = decimal_product($quantity, $item->SalesPrice);
+        input_decimal($item->RemainingStock, 12, 3);
+        if (db_exec('UPDATE canteen_item SET Qnty = Qnty - CAST(? AS DECIMAL(12,3)) WHERE ItemID = ? AND Qnty >= CAST(? AS DECIMAL(12,3))', [$quantity, $itemID, $quantity]) !== 1) return;
+        db_exec('INSERT INTO canteen_sales_detail (SalesID, Date, ItemID, Qnty, PurAmt, Rate, Amt) VALUES (?, ?, ?, ?, ?, ?, ?)', [$SalesID, now_sql(), $itemID, $quantity, $purAmount, $item->SalesPrice, $saleAmount]);
         db_exec('UPDATE canteen_sales SET SR = ? WHERE SalesID = ?', ['S', $SalesID]);
     });
 }
@@ -61,7 +61,7 @@ if ($SalesID > 0 && sales_id($_GET, 'id') > 0) {
         $detail = db_one('SELECT ID, ItemID, Qnty FROM canteen_sales_detail WHERE ID = ? AND SalesID = ? FOR UPDATE', [$detailID, $SalesID]);
         if ($detail === null) return;
         if (db_one('SELECT ItemID FROM canteen_item WHERE ItemID = ? FOR UPDATE', [$detail->ItemID]) === null) throw new RuntimeException('Cannot reverse a line with a missing stock item');
-        db_exec('UPDATE canteen_item SET Qnty = Qnty + ? WHERE ItemID = ?', [$detail->Qnty, $detail->ItemID]);
+        db_exec('UPDATE canteen_item SET Qnty = Qnty + CAST(? AS DECIMAL(12,3)) WHERE ItemID = ?', [$detail->Qnty, $detail->ItemID]);
         db_exec('DELETE FROM canteen_sales_detail WHERE ID = ? AND SalesID = ?', [$detailID, $SalesID]);
     });
 }
@@ -311,10 +311,10 @@ echo '<table width="100%" border="0" cellspacing="1" cellpadding="1" class="tabl
 foreach ($details as $Detail) {
     print '<tr><td>' . e($Detail->ItemID) . "</td>\n";
     print '<td>' . e($Detail->ItemName) . "</td>\n";
-    print '<td>' . e($Detail->Qnty) . "</td>\n";
-    print '<td>' . e($Detail->PurAmt) . "</td>\n";
-    print '<td>' . e($Detail->Amt) . "</td>\n";
-    $removeUrl = 'Sales.php?' . http_build_query(['Bill' => $SalesID, 'ItemID' => $Detail->ItemID, 'qnty' => $Detail->Qnty, 'id' => $Detail->ID]);
+    print '<td>' . e(fmt_numeric($Detail->Qnty)) . "</td>\n";
+    print '<td>' . e(fmt_numeric($Detail->PurAmt)) . "</td>\n";
+    print '<td>' . e(fmt_numeric($Detail->Amt)) . "</td>\n";
+    $removeUrl = 'Sales.php?' . http_build_query(['Bill' => $SalesID, 'ItemID' => $Detail->ItemID, 'qnty' => fmt_qty($Detail->Qnty), 'id' => $Detail->ID]);
     print '<td><a href="' . e($removeUrl) . '"> Delete </a></td></tr>' . "\n";
 }
 echo "</table>";
@@ -340,7 +340,7 @@ echo "</table>";
               <td>&nbsp;</td>
               <td>&nbsp;</td>
               <td>Discount : </td>
-              <td><input name="discount" type="text" size="10" onKeyUp ="TotalAmount(this.value)" value="<?= e($Disc) ?>" style="font-size: 14pt"></td>
+              <td><input name="discount" type="text" size="10" onKeyUp ="TotalAmount(this.value)" value="<?= e(fmt_numeric($Disc)) ?>" style="font-size: 14pt"></td>
               <td>Pur Amount : </td>
               <td><input name="amount1" type="text" id="amount1" style="font-size: 14pt" value = "<?= e(round((float)$PurAmt, 2)) ?>" size="10" readonly></td>
 </tr>
@@ -349,9 +349,9 @@ echo "</table>";
   <td>&nbsp;</td>
   <td>&nbsp;</td>
   <td>Total :</td>
-  <td><input name="total" type="text" size="10" readonly value = "<?= e($TotalAmount) ?>" style="font-size: 14pt"></td>
+  <td><input name="total" type="text" size="10" readonly value = "<?= e(fmt_numeric($TotalAmount)) ?>" style="font-size: 14pt"></td>
   <td>Sales Amount :</td>
-  <td><input name="amount2" type="text" id="amount2" style="font-size: 14pt" value = "<?= e($Sum) ?>" size="10" readonly></td>
+  <td><input name="amount2" type="text" id="amount2" style="font-size: 14pt" value = "<?= e(fmt_numeric($Sum)) ?>" size="10" readonly></td>
 </tr>
 </table>
 </form>

@@ -54,7 +54,7 @@ Open questions: ...
 
 | ID | Decision | Implementation |
 |----|----------|----------------|
-| Q1 | Production is Windows, currently PHP Desktop 5.6 with XAMPP MySQL. Target PHP 8.4 + MySQL 8.4 LTS; MariaDB is an alternative with its own version numbering, not “MariaDB 8”. | S1.2 supplies Windows/XAMPP commands. S0.2 and S4.5 must verify a Windows runtime that actually embeds or serves PHP 8.4; replacing the PHP Desktop executable alone is not assumed to work. Record the installed DB version and upgrade access during preflight. |
+| Q1 | Production is Windows 10 or 11 (owner confirmed 2026-10-28), currently PHP Desktop 5.6 with XAMPP MySQL. Target PHP 8.4 + MySQL 8.4 LTS; MariaDB is an alternative with its own version numbering, not “MariaDB 8”. | S1.2 supplies Windows/XAMPP commands. S0.2 and S4.5 must verify a Windows runtime that actually embeds or serves PHP 8.4; replacing the PHP Desktop executable alone is not assumed to work. Record the installed DB version and upgrade access during preflight. |
 | Q2 | Hard-delete bills and their detail lines; clean up existing orphan lines. No soft delete. Stock reversal is included in the planned D3 fix. | S2.7 reverses the bill's stock effect and deletes lines and header in one transaction. S3.2 deletes historical orphans without guessing a stock correction from missing headers. S3.4 uses RESTRICT with explicit child deletion. |
 | Q3 | Keep the latest duplicate user: IDs **27** and **29** survive; remove IDs **26** and **28**. | S3.4 reports references before deletion, preserves historical bill attribution, then adds the unique username constraint. “Latest” means the higher ID in each identified pair. |
 | Q4 | Keep two years of stock snapshots; delete snapshots strictly older than the cutoff. | S3.2 uses a fixed Asia/Dhaka cutoff recorded for the run; deletes snapshot detail rows and headers together. No monthly archive of older snapshots. Transaction history is unaffected. |
@@ -100,7 +100,7 @@ Phase 2 can start as soon as Phase 0 is merged. It doesn't wait for Phase 1.
 | S2.10 | Integration sweep | merged |
 | S3.1 | utf8mb4 everywhere | merged |
 | S3.2 | Data clean-up | merged |
-| S3.3 | Column types and defaults | todo |
+| S3.3 | Column types and defaults | merged |
 | S3.4 | Constraints | todo |
 | S4.1 | POST + CSRF for destructive actions | todo |
 | S4.2 | Admin backup download | todo |

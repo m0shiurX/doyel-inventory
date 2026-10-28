@@ -55,7 +55,7 @@ if ($BillInfo !== null) {
 $Qnty = 0;
 $sl = 1;
 foreach (db_all('SELECT i.ItemName, p.Supplier, d.Rate, d.Qnty, d.Amt FROM canteen_purchase_detail d INNER JOIN canteen_item i ON i.ItemID = d.ItemID INNER JOIN canteen_purchase p ON p.BillNo = d.BillNo WHERE d.BillNo = ? ORDER BY d.ID', [$SalesID]) as $Detail) {
-    echo '<tr><td>' . $sl++ . '</td><td>' . e($Detail->ItemName) . '</td><td>' . e($Detail->Supplier) . '</td><td>' . e($Detail->Rate) . '</td><td>' . e($Detail->Qnty) . '</td><td>' . e($Detail->Amt) . '</td></tr>';
+    echo '<tr><td>' . $sl++ . '</td><td>' . e($Detail->ItemName) . '</td><td>' . e($Detail->Supplier) . '</td><td>' . e(fmt_numeric($Detail->Rate)) . '</td><td>' . e(fmt_numeric($Detail->Qnty)) . '</td><td>' . e(fmt_numeric($Detail->Amt)) . '</td></tr>';
     $Qnty += (float)$Detail->Qnty;
 }
 ?>
@@ -63,7 +63,7 @@ foreach (db_all('SELECT i.ItemName, p.Supplier, d.Rate, d.Qnty, d.Amt FROM cante
               <th>&nbsp;</th>
               <th colspan="3">Total :</th>
               <th><?= e($Qnty) ?></th>
-              <th><?= e($Total) ?> Tk</th>
+              <th><?= e(fmt_money($Total)) ?> Tk</th>
             </tr>
             <?php
             if ($Disc==0) {
@@ -73,13 +73,13 @@ foreach (db_all('SELECT i.ItemName, p.Supplier, d.Rate, d.Qnty, d.Amt FROM cante
                           <td>&nbsp;</td>
                           <td colspan='3'><b>Discount :</b></td>
                           <td><b>&nbsp;</b></td>
-                          <td><b><?= e($Disc) ?> Tk</b></td>
+                          <td><b><?= e(fmt_numeric($Disc)) ?> Tk</b></td>
                         </tr>
             <tr>
               <th>&nbsp;</th>
               <th colspan="3"><b>Net Amount :</b></th>
               <th>&nbsp;</td>
-              <th><?= e($NetTotal) ?> Tk</th>
+              <th><?= e(fmt_money($NetTotal)) ?> Tk</th>
             </tr>
 </table>
 <br>

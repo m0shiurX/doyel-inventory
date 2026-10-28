@@ -45,11 +45,11 @@ require_login();
                 <td align="center"><?= e($row->ItemID) ?></td>
                 <td><a href="add_item.php?ID=<?= e(urlencode($row->ItemID)) ?>">Edit</a></td>
                 <td id="ItemName"><?= e($row->ItemName) ?></td>
-                <td align="center"><?= e($row->Qnty) ?></td>
+                <td align="center"><?= e(fmt_numeric($row->Qnty)) ?></td>
                 <td align="center"><?= e($row->MinimumQuantity) ?></td>
                 <td align="center"><?= e($row->MaximumQuantity) ?></td>
-                <td align="center"><?= e($row->PurPrice) ?></td>
-                <td align="center"><?= e($row->SalesPrice) ?></td>
+                <td align="center"><?= e(fmt_numeric($row->PurPrice)) ?></td>
+                <td align="center"><?= e(fmt_numeric($row->SalesPrice)) ?></td>
             </tr>
         <?php endforeach; ?>
 	</table>

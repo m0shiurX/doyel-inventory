@@ -6,7 +6,7 @@ $selectedId = is_scalar($_GET['ID'] ?? null) ? (string)$_GET['ID'] : '';
 $paymentAdded = false;
 $amountInput = is_scalar($_POST['amount'] ?? null) ? (string)$_POST['amount'] : '';
 if ($selectedName !== '' && is_numeric($amountInput) && is_finite((float)$amountInput) && (float)$amountInput != 0) {
-    db_exec('INSERT INTO canteen_expenses (Date, UserName, Description, HeadOfAccount, amount, Remarks, amt) VALUES (?, ?, ?, ?, ?, ?, ?)', [now_sql(), mb_substr(current_user(), 0, 30, 'UTF-8'), mb_substr($selectedName, 0, 100, 'UTF-8'), 'Supplier Payment', (float)$amountInput, mb_substr(is_string($_POST['Remarks'] ?? null) ? $_POST['Remarks'] : '', 0, 20, 'UTF-8'), 0]);
+    db_exec('INSERT INTO canteen_expenses (Date, UserName, Description, HeadOfAccount, amount, Remarks, amt) VALUES (?, ?, ?, ?, ?, ?, ?)', [now_sql(), mb_substr(current_user(), 0, 30, 'UTF-8'), mb_substr($selectedName, 0, 100, 'UTF-8'), 'Supplier Payment', input_decimal($amountInput), mb_substr(is_string($_POST['Remarks'] ?? null) ? $_POST['Remarks'] : '', 0, 20, 'UTF-8'), 0]);
     $paymentAdded = true;
 }
 ?>
@@ -109,7 +109,7 @@ foreach ($suppliers as $Mem) {
  <?php
 foreach (db_all('SELECT BillNo, Date, Amount, Discount, Total FROM canteen_purchase WHERE Supplier = ? ORDER BY Date DESC, BillNo DESC LIMIT 5', [$selectedName]) as $Paid) {
     $Date = date_create($Paid->Date);
-    echo '<tr><td>' . e($Date ? date_format($Date, 'd-M-y') : '') . '</td><td>' . e($Paid->BillNo) . '</td><td>' . e($Paid->Amount) . '</td><td>' . e($Paid->Discount) . '</td><td>' . e($Paid->Total) . '</td></tr>';
+    echo '<tr><td>' . e($Date ? date_format($Date, 'd-M-y') : '') . '</td><td>' . e($Paid->BillNo) . '</td><td>' . e(fmt_numeric($Paid->Amount)) . '</td><td>' . e(fmt_numeric($Paid->Discount)) . '</td><td>' . e(fmt_numeric($Paid->Total)) . '</td></tr>';
 }
 ?>
 
@@ -141,7 +141,7 @@ echo '<b>Total DUE : ' . e((float)$due->due - (float)$due->paid) . '</b>';
  <?php
 foreach (db_all('SELECT Date, UserName, amount, Remarks FROM canteen_expenses WHERE Description = ? ORDER BY Date DESC, PaymentID DESC LIMIT 5', [$selectedName]) as $Paid) {
     $Date = date_create($Paid->Date);
-    echo '<tr><td>' . e($Date ? date_format($Date, 'd-M-y') : '') . '</td><td>' . e($Paid->UserName) . '</td><td>' . e($Paid->amount) . '</td><td>' . e($Paid->Remarks) . '</td><td><a href="#">Recept</a></td></tr>';
+    echo '<tr><td>' . e($Date ? date_format($Date, 'd-M-y') : '') . '</td><td>' . e($Paid->UserName) . '</td><td>' . e(fmt_numeric($Paid->amount)) . '</td><td>' . e($Paid->Remarks) . '</td><td><a href="#">Recept</a></td></tr>';
 }
 ?>
 

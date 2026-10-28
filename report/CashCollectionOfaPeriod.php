@@ -24,9 +24,9 @@ $TotalAmt = 0;
 foreach ($groups as $group) {
     echo '<tr><td colspan="5"><b>' . e($group->HeadOfAccount) . '</b></td></tr>';
     foreach ($byHead[mb_strtolower(rtrim($group->HeadOfAccount), 'UTF-8')] ?? [] as $payment) {
-        echo '<tr><td>' . e(date_format(date_create($payment->Date), 'd-M-y h:i A')) . "</td>\n<td>" . e($payment->UserName) . "</td>\n<td>" . e($payment->Description) . "</td>\n<td>" . e($payment->amount) . "</td>\n<td>" . e($payment->Remarks) . "&nbsp;</td>\n</tr>\n";
+        echo '<tr><td>' . e(date_format(date_create($payment->Date), 'd-M-y h:i A')) . "</td>\n<td>" . e($payment->UserName) . "</td>\n<td>" . e($payment->Description) . "</td>\n<td>" . e(fmt_numeric($payment->amount)) . "</td>\n<td>" . e($payment->Remarks) . "&nbsp;</td>\n</tr>\n";
     }
-    echo '<tr><th>&nbsp;</th><th>&nbsp;</th><th>Sub Total</th><th>' . e($group->amt) . '</th><th>&nbsp;</th></tr>';
+    echo '<tr><th>&nbsp;</th><th>&nbsp;</th><th>Sub Total</th><th>' . e(fmt_numeric($group->amt)) . '</th><th>&nbsp;</th></tr>';
     $TotalAmt += (float)$group->amt;
 }
 echo '<tr><th>&nbsp;</th><th>&nbsp;</th><th>Ground Total</th><th>' . e($TotalAmt) . '</th><th>&nbsp;</th></tr>';

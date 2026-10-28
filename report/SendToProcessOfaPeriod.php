@@ -20,8 +20,8 @@ foreach ($items as $item) {
     $amount = (float)$item->sQnty * (float)$item->SalesPrice;
     echo '<tr><td>' . ++$sl . "</td>
 <td>" . e($item->ItemName) . "</td>
-<td>" . e($item->SalesPrice) . "</td>
-<td>" . e($item->sQnty) . "</td>
+<td>" . e(fmt_numeric($item->SalesPrice)) . "</td>
+<td>" . e(fmt_numeric($item->sQnty)) . "</td>
 <td>" . e($amount) . "</td>
 </tr>
 ";

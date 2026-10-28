@@ -10,3 +10,16 @@ function redirect(string $url): never
     exit;
 }
 function redirectTo(string $url): never { redirect($url); }
+
+// Preserve server-rendered numeric precision; only remove DECIMAL scale padding.
+function fmt_numeric(mixed $value): string
+{
+    $text = (string)($value ?? '');
+    if (preg_match('/^-?\d+\.\d+$/D', $text)) {
+        $text = rtrim(rtrim($text, '0'), '.');
+        if ($text === '-0') $text = '0';
+    }
+    return $text;
+}
+function fmt_money(mixed $value): string { return fmt_numeric($value); }
+function fmt_qty(mixed $value): string { return fmt_numeric($value); }

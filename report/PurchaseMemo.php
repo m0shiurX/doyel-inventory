@@ -32,7 +32,7 @@ echo '<table width="100%" border="0" cellspacing="0" cellpadding="1" class="tabl
 $bgcolor = '';
 foreach (db_all('SELECT i.ItemID, i.ItemName, d.Qnty, d.Amt FROM canteen_sales_detail d INNER JOIN canteen_item i ON i.ItemID = d.ItemID WHERE d.SalesID = ? ORDER BY d.ID', [$SalesID]) as $Detail) {
     $bgcolor = $bgcolor === '#ffffff' ? '#f1f1f1' : '#ffffff';
-    echo '<tr bgcolor="' . e($bgcolor) . '"><td>' . e($Detail->ItemID) . '</td><td>' . e($Detail->ItemName) . '</td><td>' . e($Detail->Qnty) . '</td><td>' . e($Detail->Amt) . '</td></tr>';
+    echo '<tr bgcolor="' . e($bgcolor) . '"><td>' . e($Detail->ItemID) . '</td><td>' . e($Detail->ItemName) . '</td><td>' . e(fmt_numeric($Detail->Qnty)) . '</td><td>' . e(fmt_numeric($Detail->Amt)) . '</td></tr>';
 }
 echo "</table>";
 

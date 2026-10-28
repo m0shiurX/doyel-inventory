@@ -22,11 +22,11 @@ if (item_text('Item', 80) !== '') {
     $SupplierName = item_text('supplier', 80);
     $GenericName = item_text('GenericName', 25);
     $ItemType = item_text('ItemType', 2);
-    $PurPrice = item_number('PurPrice');
-    $SalesPrice = item_number('SalesPrice');
+    $PurPrice = input_decimal(item_text('PurPrice', 200), 14, 3);
+    $SalesPrice = input_decimal(item_text('SalesPrice', 200), 14, 3);
     // Explicit stock edits retain their existing workflow; a disabled/omitted field cannot erase stock.
     $hasStock = is_string($_POST['totalQnty'] ?? null);
-    $totalQnty = item_number('totalQnty');
+    $totalQnty = input_decimal(item_text('totalQnty', 200), 12, 3);
     $MaximumQuantity = item_number('MaximumQuantity');
     $MinimumQuantity = item_number('MinimumQuantity');
     $Drop = !empty($_GET['Drop']) ? item_number('Drop') : 0;
@@ -81,13 +81,13 @@ if ($ID > 0) {
           <?php else: ?>&nbsp;<?php endif; ?>
         </td>
           <td>Available</td>
-          <td><input name="totalQnty" type="number" id="totalQnty" <?= ($ID > 0 && !is_admin()) ? '' : 'disabled' ?>  value="<?= e($getTotal) ?>"></td>
+          <td><input name="totalQnty" type="number" id="totalQnty" <?= ($ID > 0 && !is_admin()) ? '' : 'disabled' ?>  value="<?= e(fmt_numeric($getTotal)) ?>"></td>
       </tr>
       <tr>
         <td width="17%">Item Name</td>
         <td width="27%"><input onKeyPress="return dg(event);" name="Item" type="text" id="Item" size="30" value="<?= e($ItemName) ?>"></td>
         <td width="11%">Pur Price</td>
-        <td width="19%"><input name="PurPrice" type="text" id="PurPrice" value="<?= e($PurPrice) ?>"></td>
+        <td width="19%"><input name="PurPrice" type="text" id="PurPrice" value="<?= e(fmt_numeric($PurPrice)) ?>"></td>
         <td width="26%">Min</td>
         <td width="19%"><input name="MinimumQuantity" type="text" id="MinimumQuantity" value="<?= e($MinimumQuantity) ?>"></td>
       </tr>
@@ -99,7 +99,7 @@ if ($ID > 0) {
           </label>
         </td>
         <td>Sales Price</td>
-        <td><input name="SalesPrice" type="text" id="SalesPrice" value="<?= e($SalesPrice) ?>"/></td>
+        <td><input name="SalesPrice" type="text" id="SalesPrice" value="<?= e(fmt_numeric($SalesPrice)) ?>"/></td>
         <td width="26%">Max</td>
         <td width="19%"><input name="MaximumQuantity" type="text" id="MaximumQuantity" value="<?= e($MinimumQuantity) ?>"></td>
       </tr>

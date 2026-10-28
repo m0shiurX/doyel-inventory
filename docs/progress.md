@@ -29,3 +29,7 @@ Private source dumps, Phase 0 golden outputs and history recovery now also exist
 - S3.3: after stock becomes DECIMAL, exercise fractional sale/add/remove and bill reversal; Phase 2 intentionally retains the old integer stock column until that migration.
 
 - S3.3: enforce the selected numeric scale before related writes (quantity before stock/detail arithmetic; money discounts before header totals), so schema rounding cannot make stored detail quantities disagree with stock or stored discounts disagree with totals. Include boundary precision checks as well as ordinary fractional quantities.
+
+## Windows runtime sources (checked 2026-10-28)
+
+The owner confirmed Windows 10/11. The [PHP Desktop Windows 130.1 release](https://github.com/cztomczak/phpdesktop/releases/tag/chrome-v130.1) bundles PHP 8.3 and records broken native JS dialogs. S4.1 must use an HTML confirmation path for deletion. The [official interpreter upgrade instructions](https://github.com/cztomczak/phpdesktop/wiki/Knowledge-Base#php-interpreter--extensions) describe replacing the PHP directory with official x64 NTS binaries; S4.5 must verify PHP 8.4 CGI/extensions/Argon2id and actual Windows launch/printing. These source facts do not constitute a Windows runtime rehearsal.

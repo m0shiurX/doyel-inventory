@@ -57,7 +57,7 @@ Report, then (after sign-off) delete:
 **Owns:** `db/migrations/003_types_defaults.*`, `lib/` (formatting helper only, if needed)
 **Resolves:** D1, F7 (schema side)
 
-- Money totals (`Amount`, `Discount`, `Total`, `amount`, `Amt`, `PurAmt`) become `DECIMAL(14,2)`. Preserve unit-price precision: `Rate` uses at least `DECIMAL(14,3)` because existing sale/purchase rates include real three-decimal values (detail IDs 4487/2832); profile `PurPrice` and `SalesPrice` before selecting their scale and preserve meaningful existing precision. Do not label actual half-cent rounding as float noise. Quantities in detail tables and `canteen_item.Qnty` become `DECIMAL(12,3)` unconditionally: fractional sale details exist even though the old stock column was INT, so integer current-stock values do not justify keeping INT.
+- Money totals (`Amount`, `Discount`, `Total`, `amount`, `Amt`, `PurAmt`) become `DECIMAL(14,2)`. Preserve unit-price precision consistently: `Rate`, `PurPrice` and `SalesPrice` use `DECIMAL(14,3)` because existing sale/purchase rates include real three-decimal values (detail IDs 4487/2832), and a purchased rate also becomes the current catalogue purchase price. Profile all unit-price fields and preserve any additional meaningful existing precision before applying. Do not label actual half-cent rounding as float noise. Quantities in detail tables and `canteen_item.Qnty` become `DECIMAL(12,3)` unconditionally: fractional sale details exist even though the old stock column was INT, so integer current-stock values do not justify keeping INT.
 - **Output stability:** DECIMAL columns come back as `"15710.00"` where FLOAT gave `"15710"`. Pick one of two approaches:
   - (a) add `fmt_money()`/`fmt_qty()` in `lib/html.php` that reproduce the legacy rendering (no trailing `.00`, as PHP printed FLOAT), and apply them where pages print these columns. This is a hand-off list for S3.3 to execute across pages, which is allowed in this slice and has to be listed;
   - (b) accept the `.00` rendering as an intentional change.
@@ -65,11 +65,12 @@ Report, then (after sign-off) delete:
   Default to (a) and ask the owner whether they prefer (b).
 - Run a reconciliation query before and after: `SUM()` of each money column per table, and per-customer dues. Differences are only float noise below 0.01, and they're reported.
 - Give every NOT NULL column without a default an explicit `DEFAULT` (`0`, `''`, or none for required business fields).
+- Normalize quantities to three decimal places, unit prices to their selected scale, and money/discounts to cents **before** related arithmetic and writes, using an explicit documented rounding policy. Otherwise schema rounding could make stock disagree with stored detail quantities or header totals disagree with stored discounts. Verify fractional and boundary inputs through the actual forms.
 - Datetime columns stay `DATETIME`.
 
 **Done when:**
 - Reconciliation shows total and per-customer dues equal to the cent.
-- The suites show zero diffs under option (a), or only `.00`-type diffs under option (b).
+- Under option (a), scale-padding differences are eliminated. Any remaining derived FLOAT aggregate artifacts must have an exact label/cell envelope and independent SQL proof, with unchanged meaningful row values and cent-level reconciliations; never recreate old binary noise or mask broad differences. Under option (b), also list the accepted `.00` rendering changes.
 
 ## S3.4 Constraints
 

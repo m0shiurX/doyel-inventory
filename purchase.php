@@ -4,10 +4,6 @@ require_login();
 function purchase_input(array $input, string $key): string {
     return is_scalar($input[$key] ?? null) ? (string)$input[$key] : '';
 }
-function purchase_number(array $input, string $key): float {
-    $value = purchase_input($input, $key);
-    return is_numeric($value) && is_finite((float)$value) ? (float)$value : 0;
-}
 $BillNo = purchase_input($_POST, 'bill_no') ?: purchase_input($_GET, 'Bill');
 $BillNo = ctype_digit($BillNo) && (int)$BillNo > 0 ? (int)$BillNo : '';
 $UserName = current_user();
@@ -26,23 +22,27 @@ if ($BillNo !== '' && purchase_input($_GET, 'hPost') !== '') {
     db_tx(function () use ($BillNo) {
         $bill = db_one('SELECT BillNo, Post FROM canteen_purchase WHERE BillNo = ? FOR UPDATE', [$BillNo]);
         if ($bill === null || (int)$bill->Post !== 0) return;
-        $amount = db_value('SELECT COALESCE(SUM(Amt), 0) FROM canteen_purchase_detail WHERE BillNo = ?', [$BillNo]);
-        $discount = purchase_number($_GET, 'discount');
+        $discount = input_decimal(purchase_input($_GET, 'discount'));
+        $totals = db_one('SELECT COALESCE(SUM(Amt), 0) AS Amount, COALESCE(SUM(Amt), 0) - CAST(? AS DECIMAL(14,2)) AS Total FROM canteen_purchase_detail WHERE BillNo = ?', [$discount, $BillNo]);
+        $amount = input_decimal($totals->Amount);
+        $total = input_decimal($totals->Total);
         // The entered discount is allowed; readonly amount/total are not trusted.
-        db_exec('UPDATE canteen_purchase SET Supplier = ?, Amount = ?, Discount = ?, Total = ?, Post = ? WHERE BillNo = ? AND Post = ?', [mb_substr(purchase_input($_GET, 'supplier'), 0, 80, 'UTF-8'), $amount, $discount, (float)$amount - $discount, 1, $BillNo, 0]);
+        db_exec('UPDATE canteen_purchase SET Supplier = ?, Amount = ?, Discount = ?, Total = ?, Post = ? WHERE BillNo = ? AND Post = ?', [mb_substr(purchase_input($_GET, 'supplier'), 0, 80, 'UTF-8'), $amount, $discount, $total, 1, $BillNo, 0]);
     });
 }
-if ($BillNo !== '' && purchase_input($_POST, 'Item') !== '' && purchase_number($_POST, 'qnty') != 0) {
-    $quantity = abs(purchase_number($_POST, 'qnty'));
-    $rate = purchase_number($_POST, 'rate');
+$quantity = ltrim(input_decimal(purchase_input($_POST, 'qnty'), 12, 3), '-');
+if ($BillNo !== '' && purchase_input($_POST, 'Item') !== '' && $quantity != 0) {
+    $rate = input_decimal(purchase_input($_POST, 'rate'), 14, 3);
+    $lineAmount = ltrim(decimal_product($quantity, $rate), '-');
     $itemId = purchase_input($_POST, 'ItemID');
-    if (ctype_digit($itemId) && (int)$itemId > 0) db_tx(function () use ($BillNo, $quantity, $rate, $itemId) {
+    if (ctype_digit($itemId) && (int)$itemId > 0) db_tx(function () use ($BillNo, $quantity, $rate, $itemId, $lineAmount) {
         $bill = db_one('SELECT BillNo, Post FROM canteen_purchase WHERE BillNo = ? FOR UPDATE', [$BillNo]);
         if ($bill === null || (int)$bill->Post !== 0) return;
-        $item = db_one('SELECT ItemID FROM canteen_item WHERE ItemID = ? FOR UPDATE', [$itemId]);
-        if ($item === null || !is_finite($quantity * $rate)) return;
-        db_exec('INSERT INTO canteen_purchase_detail (BillNo, Date, ItemID, Qnty, Rate, Amt) VALUES (?, ?, ?, ?, ?, ?)', [$BillNo, now_sql(), $itemId, $quantity, $rate, abs($quantity * $rate)]);
-        db_exec('UPDATE canteen_item SET Qnty = Qnty + ?, PurPrice = ? WHERE ItemID = ?', [$quantity, $rate, $itemId]);
+        $item = db_one('SELECT ItemID, Qnty + CAST(? AS DECIMAL(12,3)) AS NewStock FROM canteen_item WHERE ItemID = ? FOR UPDATE', [$quantity, $itemId]);
+        if ($item === null) return;
+        input_decimal($item->NewStock, 12, 3);
+        db_exec('INSERT INTO canteen_purchase_detail (BillNo, Date, ItemID, Qnty, Rate, Amt) VALUES (?, ?, ?, ?, ?, ?)', [$BillNo, now_sql(), $itemId, $quantity, $rate, $lineAmount]);
+        db_exec('UPDATE canteen_item SET Qnty = Qnty + CAST(? AS DECIMAL(12,3)), PurPrice = ? WHERE ItemID = ?', [$quantity, $rate, $itemId]);
         db_exec('UPDATE canteen_purchase SET PR = ? WHERE BillNo = ?', ['S', $BillNo]);
     });
 }
@@ -56,7 +56,7 @@ if ($BillNo !== '' && ctype_digit($detailId) && (int)$detailId > 0) {
         $item = db_one('SELECT ItemID FROM canteen_item WHERE ItemID = ? FOR UPDATE', [$detail->ItemID]);
         if ($item === null) throw new RuntimeException('The purchase stock item no longer exists.');
         // Restore stored quantities only; URL ItemID/qnty cannot alter stock.
-        db_exec('UPDATE canteen_item SET Qnty = Qnty - ? WHERE ItemID = ?', [$detail->Qnty, $detail->ItemID]);
+        db_exec('UPDATE canteen_item SET Qnty = Qnty - CAST(? AS DECIMAL(12,3)) WHERE ItemID = ?', [$detail->Qnty, $detail->ItemID]);
         db_exec('DELETE FROM canteen_purchase_detail WHERE ID = ? AND BillNo = ?', [$detailId, $BillNo]);
     });
 }
@@ -241,8 +241,8 @@ if ($BillInfo !== null) {
 echo '<table width="100%" border="0" cellspacing="1" cellpadding="1" class="table1" id="tableGd">';
 echo '<tr><td width="10%"><b>Item ID</b></td><td width="40%"><b>Item Name</b></td><td width="15%"><b>Qnty</b></td><td width="15%"><b>Amount</b></td><td width="20%"><b>Delete</b></td></tr>';
 foreach ($details as $Detail) {
-    echo '<tr><td>' . e($Detail->ItemID) . '</td> <td>' . e($Detail->ItemName) . '</td> <td>' . e($Detail->Qnty) . '</td> <td>' . e($Detail->Amt) . '</td> ';
-    $removeUrl = 'purchase.php?' . http_build_query(['Bill' => $BillNo, 'ItemID' => $Detail->ItemID, 'qnty' => $Detail->Qnty, 'id' => $Detail->ID]);
+    echo '<tr><td>' . e($Detail->ItemID) . '</td> <td>' . e($Detail->ItemName) . '</td> <td>' . e(fmt_numeric($Detail->Qnty)) . '</td> <td>' . e(fmt_numeric($Detail->Amt)) . '</td> ';
+    $removeUrl = 'purchase.php?' . http_build_query(['Bill' => $BillNo, 'ItemID' => $Detail->ItemID, 'qnty' => fmt_qty($Detail->Qnty), 'id' => $Detail->ID]);
     echo '<td><a href="' . e($removeUrl) . '"> Delete </a></td> </tr>';
 }
 echo '</table>';

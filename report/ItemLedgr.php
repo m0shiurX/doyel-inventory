@@ -54,9 +54,9 @@ $movements = db_all('SELECT Date, BillNo, Qnty, QT FROM (
 <tr>
 <td><?= e(date('d-M-Y', strtotime($movement->Date))) ?></td>
 <td><?= e($movement->BillNo) ?></td>
-<td><?= e($movement->Qnty) ?> &nbsp;</td>
+<td><?= e(fmt_numeric($movement->Qnty)) ?> &nbsp;</td>
 <?php $Total += (float)($movement->Qnty ?? 0); ?>
-<td><?= e($movement->QT) ?> &nbsp;</td>
+<td><?= e(fmt_numeric($movement->QT)) ?> &nbsp;</td>
 <?php $Total -= (float)($movement->QT ?? 0); ?>
 <td><?= e($Total) ?></td>
 </tr>

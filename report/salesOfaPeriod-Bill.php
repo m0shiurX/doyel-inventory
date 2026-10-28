@@ -35,13 +35,13 @@ foreach ($headers as $bill) {
     foreach ($linesByBill[$bill->SalesID] ?? [] as $line) {
         echo '<tr><td>' . ++$sl . "</td>
 <td>" . e($line->ItemName) . "</td>
-<td>" . e($line->Qnty) . "</td>
-<td>" . e($line->Rate) . "</td>
-<td>" . e($line->Amt) . "</td>
+<td>" . e(fmt_numeric($line->Qnty)) . "</td>
+<td>" . e(fmt_numeric($line->Rate)) . "</td>
+<td>" . e(fmt_numeric($line->Amt)) . "</td>
 </tr>
 ";
     }
-    echo '<tr><th>&nbsp;</th><th>&nbsp;</th><th>' . e($bill->Amount) . '</th><th>' . e($bill->Discount) . '</th><th>' . e($bill->Total) . "</th></tr>
+    echo '<tr><th>&nbsp;</th><th>&nbsp;</th><th>' . e(fmt_numeric($bill->Amount)) . '</th><th>' . e(fmt_numeric($bill->Discount)) . '</th><th>' . e(fmt_numeric($bill->Total)) . "</th></tr>
 ";
     $FTotal += (float)$bill->Total;
 }

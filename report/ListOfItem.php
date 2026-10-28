@@ -43,8 +43,8 @@ $TotalQnty = 0;
 <tr id="<?= e($row->ItemID) ?>">
 <td><?= e($row->ItemID) ?></td>
 <td><?= e($row->ItemName) ?></td>
-<td><?= e($row->PurPrice) ?></td>
-<td><?= e($row->SalesPrice) ?></td>
+<td><?= e(fmt_numeric($row->PurPrice)) ?></td>
+<td><?= e(fmt_numeric($row->SalesPrice)) ?></td>
 </tr>
 <?php endforeach; ?>
 <tr>

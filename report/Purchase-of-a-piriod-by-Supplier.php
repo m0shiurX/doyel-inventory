@@ -23,9 +23,9 @@ $Amount = 0; $Discount = 0; $Total = 0;
 foreach ($bills as $bill) {
     echo '<tr><td>' . e($bill->BillNo) . "</td>
 <td>" . e(date_format(date_create($bill->Date), 'd-M-Y')) . "</td>
-<td>" . e($bill->Amount) . "</td>
-<td>" . e($bill->Discount) . "</td>
-<td>" . e($bill->Total) . '</td>';
+<td>" . e(fmt_numeric($bill->Amount)) . "</td>
+<td>" . e(fmt_numeric($bill->Discount)) . "</td>
+<td>" . e(fmt_numeric($bill->Total)) . '</td>';
     echo '<td><a href="PurMemo.php?id=' . e(urlencode($bill->BillNo)) . '">View</a></td></tr>' . "
 ";
     $Amount += (float)$bill->Amount; $Discount += (float)$bill->Discount; $Total += (float)$bill->Total;

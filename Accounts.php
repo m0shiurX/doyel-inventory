@@ -48,27 +48,27 @@ $cash = (float)($totals['collection']->allTotal ?? 0) - (float)($totals['expense
 
     <div class="list">
         <div style="width:230px; float:left">Cash Collection This Month</div>
-        <div style="float:left"><?= e($totals['collection']->monthTotal) ?> Taka</div>
+        <div style="float:left"><?= e(fmt_numeric($totals['collection']->monthTotal)) ?> Taka</div>
     </div>
     <div class="list">
         <div style="width:230px; float:left">Cash Expenses This Month</div>
-        <div style="float:left"><?= e($totals['expenses']->monthTotal) ?> Taka</div>
+        <div style="float:left"><?= e(fmt_numeric($totals['expenses']->monthTotal)) ?> Taka</div>
     </div>
     <div class="list">
         <div style="width:230px; float:left">Cash Collection Previous Month</div>
-        <div style="float:left"><?= e($totals['collection']->previousTotal) ?> Taka</div>
+        <div style="float:left"><?= e(fmt_numeric($totals['collection']->previousTotal)) ?> Taka</div>
     </div>
     <div class="list">
         <div style="width:230px; float:left">Cash Expenses Previous Month</div>
-        <div style="float:left"><?= e($totals['expenses']->previousTotal) ?> Taka</div>
+        <div style="float:left"><?= e(fmt_numeric($totals['expenses']->previousTotal)) ?> Taka</div>
     </div>
     <div class="list">
         <div style="width:230px; float:left">Cash Collection This Year</div>
-        <div style="float:left"><?= e($totals['collection']->yearTotal) ?> Taka</div>
+        <div style="float:left"><?= e(fmt_numeric($totals['collection']->yearTotal)) ?> Taka</div>
     </div>
     <div class="list">
         <div style="width:230px; float:left">Cash Expenses This Year</div>
-        <div style="float:left"><?= e($totals['expenses']->yearTotal) ?> Taka</div>
+        <div style="float:left"><?= e(fmt_numeric($totals['expenses']->yearTotal)) ?> Taka</div>
     </div>
 
     </div>

@@ -11,7 +11,7 @@ $rawAmount = expenses_text($_POST, 'amount');
 $description = expenses_text($_POST, 'Description', 100);
 $head = expenses_text($_POST, 'HeadOfAccount', 50);
 if (is_numeric($rawAmount) && is_finite((float)$rawAmount) && $rawAmount !== '0' && $description !== '' && $head !== '' && $head !== 'Head Of Accounts') {
-    db_exec('INSERT INTO canteen_expenses (Date, UserName, Description, HeadOfAccount, amount, Remarks) VALUES (?, ?, ?, ?, ?, ?)', [now_sql(), mb_substr(current_user(), 0, 30, 'UTF-8'), $description, $head, (float)$rawAmount, expenses_text($_POST, 'Remarks', 20)]);
+    db_exec('INSERT INTO canteen_expenses (Date, UserName, Description, HeadOfAccount, amount, Remarks) VALUES (?, ?, ?, ?, ?, ?)', [now_sql(), mb_substr(current_user(), 0, 30, 'UTF-8'), $description, $head, input_decimal($rawAmount), expenses_text($_POST, 'Remarks', 20)]);
     $message = 'Expenses Sucess';
 }
 $deleteMessage = '';
@@ -83,7 +83,7 @@ foreach ($rows as $Paid) {
     print '<tr><td>' . e($Date) . "</td>\n";
     print '<td>' . e($Paid->UserName) . "</td>\n";
     print '<td>' . e($Paid->Description) . "</td>\n";
-    print '<td>' . e($Paid->amount) . "</td>\n";
+    print '<td>' . e(fmt_numeric($Paid->amount)) . "</td>\n";
     print '<td>' . e($Paid->Remarks) . "</td>\n";
     print '<td><a href="Expenses.php?d=' . e(urlencode($Paid->PaymentID)) . '">Delete</a></td></tr>' . "\n";
 }

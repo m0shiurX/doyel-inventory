@@ -13,7 +13,8 @@ $customers = db_all('SELECT c.MemberID, c.MemberName, c.Nickname, c.address, s.d
 $paymentMessage = '';
 $rawAmount = payment_text($_POST, 'amount');
 if ($Nickname !== '' && is_numeric($rawAmount) && is_finite((float)$rawAmount) && $rawAmount !== '0') {
-    $amount = is_admin() ? (float)$rawAmount : abs((float)$rawAmount);
+    $amount = input_decimal($rawAmount);
+    if (!is_admin()) $amount = ltrim($amount, '-');
     db_exec('INSERT INTO canteen_collection (UserName, Date, Description, HeadOfAccount, amount, Remarks) VALUES (?, ?, ?, ?, ?, ?)', [mb_substr(current_user(), 0, 50, 'UTF-8'), now_sql(), mb_substr($Nickname, 0, 100, 'UTF-8'), 'Collection from Customer', $amount, payment_text($_POST, 'Remarks', 100)]);
     $paymentMessage = 'Sucsess';
 }
@@ -137,7 +138,7 @@ $payments = $Nickname !== '' ? db_all('SELECT PaymentID, Date, UserName, Descrip
       $Date = date_format(date_create($BillInfo->Date), 'd-M-y');
       echo '<tr><td>' . e($BillInfo->SalesID) . '</td>';
       echo '<td>' . e($Date) . '</td><td>' . e($BillInfo->UserName) . '</td>';
-      echo '<td>' . e($BillInfo->Amount) . '</td><td>' . e($BillInfo->Discount) . '</td><td>' . e($BillInfo->Total) . '</td></tr>';
+      echo '<td>' . e(fmt_numeric($BillInfo->Amount)) . '</td><td>' . e(fmt_numeric($BillInfo->Discount)) . '</td><td>' . e(fmt_numeric($BillInfo->Total)) . '</td></tr>';
  }
  ?>
     </table><br>
@@ -181,7 +182,7 @@ foreach ($payments as $Detail) {
     print '<td>' . e($Date) . "</td>\n";
     print '<td>' . e($Detail->UserName) . "</td>\n";
     print '<td class="hide">' . e($Detail->Description) . "</td>\n";
-    print '<td>' . e($Detail->amount) . "</td>\n";
+    print '<td>' . e(fmt_numeric($Detail->amount)) . "</td>\n";
     print '<td>' . e($Detail->Remarks) . '</td>';
     print '<td class="hidep"><a href="remove_payment.php?d=' . e(urlencode($Detail->PaymentID)) . '">Delete</a></td>' . "\n</tr>\n";
 }

@@ -27,7 +27,7 @@ require_login();
       foreach (db_all("SELECT ItemID, ItemName, Qnty FROM canteen_item WHERE D = ? AND Qnty < MinimumQuantity ORDER BY ItemID", [0]) as $row) {
           print '<tr><td>' . $sl++ . '</td>';
           print '<td>' . e($row->ItemName) . '</td>';
-          print '<td>' . e($row->Qnty) . '</td></tr>';
+          print '<td>' . e(fmt_numeric($row->Qnty)) . '</td></tr>';
       }
     ?>
   </table>
@@ -47,7 +47,7 @@ require_login();
       foreach (db_all("SELECT ItemID, ItemName, Qnty FROM canteen_item WHERE D = ? AND Qnty > MaximumQuantity ORDER BY ItemID", [0]) as $row) {
           print '<tr><td>' . $sl++ . '</td>';
           print '<td>' . e($row->ItemName) . '</td>';
-          print '<td>' . e($row->Qnty) . '</td></tr>';
+          print '<td>' . e(fmt_numeric($row->Qnty)) . '</td></tr>';
       }
     ?>
   </table>

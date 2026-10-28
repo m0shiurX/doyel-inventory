@@ -13,15 +13,16 @@
 ## S4.1 POST + CSRF for destructive actions
 
 **Depends on:** Phase 2 merged (Phase 3 not required)
-**Owns:** `lib/csrf.php` (new), the action handlers and the links/forms that trigger them in `Unpost.php`, `Sales.php`, `purchase.php`, `remove_payment.php`, `Payment.php`, `CashCollection.php`, `Expenses.php`, `SavePrestntStock.php`, and its trigger in `Report.php`; `tools/perf.php` (snapshot request only)
+**Owns:** `lib/csrf.php` (new), bootstrap CSRF inclusion, all business-write/login/report-session handlers and their forms in `Unpost.php`, `Sales.php`, `purchase.php`, `remove_payment.php`, `Payment.php`, `CashCollection.php`, `Expenses.php`, `SavePrestntStock.php`, `Report.php`, `Supplier.php`, `AddSupplierName.php`, `HeadOfAccount.php`, `add_item.php`, `add_member.php`, `list_of_user.php`, `password.php`, `login.php`; characterization/scenario/performance request helpers for token/method adaptation only.
 **Resolves:** S6
 
 - `csrf_token()` stores one token per session. `csrf_field()` prints the hidden input. `require_csrf()` checks `hash_equals` and responds 403.
 - Every delete, unpost, post or remove action becomes a small `<form method="post">` with a button styled like the old link, plus `require_csrf()` in the handler. GET requests to those handlers do nothing.
 - Include the cash collection and expense `?d=` deletes, sales/purchase `NBill=add_new` bill creation, and stock-snapshot creation in the POST/CSRF conversion. The stock snapshot remains available to the same authenticated roles as before. GET may show a confirmation form but must never create a snapshot.
 - Update the one-shot stock-snapshot performance request to use the authenticated CSRF form, keeping it a single measured write.
-- Add a JS `confirm()` on delete buttons.
-- Update scenarios 1, 3, 4, 5, 7 and 8 so they post the forms the new way. This is the only `tools/scenarios/` edit allowed, and the DB results must be unchanged.
+- All state-changing POST forms, including login/password/user/item/customer/cash/supplier writes and report session updates, require a valid CSRF token. Keep read-only search/filter GETs functional; dispatch one mutation per request.
+- Delete confirmation must work without native JavaScript dialogs: use a server-rendered confirmation form; JS confirmation may only enhance it. PHP Desktop Windows 130.1 documents broken alert/confirm/prompt dialogs, so do not make deletion depend on `confirm()`. Preserve existing roles and business results.
+- Update all affected scenario/login/capture/performance request helpers to read actual CSRF fields and submit the current forms, including confirmation steps. Legacy characterization can retain its original branch; modern DB results remain unchanged. Do not add test-only mutation endpoints.
 
 **Done when:**
 - A GET to any former action URL changes nothing in the DB. Prove it for each action.
@@ -78,7 +79,7 @@
 
 The owner executes the runbook. The agent writes it and rehearses it end to end locally: legacy stack with fresh data → full procedure → modern stack serving the migrated data.
 
-1. **Server requirements:** Windows with a verified PHP 8.4 runtime and `pdo_mysql`, `mbstring`, `dom`, plus Argon2id password support for NUL-containing or >72-byte passwords; MySQL 8.4 LTS (or a separately verified MariaDB LTS version). Record the existing XAMPP database version, service names, ports, upgrade access, and executable paths. Verify PHP Desktop compatibility if retaining its shell; otherwise document the replacement local server and launch flow. Keep the old PHP Desktop 5.6/XAMPP installation available for rollback. Include Windows commands and rehearse launch, login, printing and backup download in the chosen runtime.
+1. **Server requirements:** Windows 10/11 with a verified PHP 8.4 runtime and `pdo_mysql`, `mbstring`, `dom`, plus Argon2id password support for NUL-containing or >72-byte passwords; MySQL 8.4 LTS (or a separately verified MariaDB LTS version). Record the existing XAMPP database version, service names, ports, upgrade access, and executable paths. Verify PHP Desktop compatibility if retaining its shell; otherwise document the replacement local server and launch flow. Keep the old PHP Desktop 5.6/XAMPP installation available for rollback. Include Windows commands and rehearse launch, login, printing and backup download in the chosen runtime.
 2. **Freeze and backup:** the time window, the users told, a `mysqldump` copied off the server and verified.
 3. **Migrate:** restore the dump into the new DB server if the server changes, then apply `001` → `002` → the signed-off S3.2 clean-up scripts → `003` → the signed-off duplicate-user cleanup and `004`. Cleanup must precede constraints. Rehearse the exact sequence, not all migrations followed by cleanup.
 4. **Deploy code:** `config.local.php` with real credentials and a **non-root DB user** limited to the `software` DB (SELECT/INSERT/UPDATE/DELETE, and ALTER only during migrations).

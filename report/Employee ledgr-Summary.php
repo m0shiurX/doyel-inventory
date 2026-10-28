@@ -23,7 +23,7 @@ foreach ($employees as $employee) {
     $amount = round((float)$employee->Amount, 2); $total = round((float)$employee->Total, 2);
     echo '<tr><th width="5%">&nbsp;</th><td>' . e($employee->UserName) . "</td>
 <td>" . e($amount) . "</td>
-<td>" . e($employee->Discount) . "</td>
+<td>" . e(fmt_numeric($employee->Discount)) . "</td>
 <td>" . e($total) . "</td></tr>
 ";
     $Amount += $amount; $Discount += (float)$employee->Discount; $Total += $total;

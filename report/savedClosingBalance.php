@@ -38,14 +38,14 @@ $FTotal = 0;
 <tr>
 <td><?= e($row->ItemID) ?></td>
 <td><?= e($row->ItemName) ?></td>
-<td><?= e($row->PurPrice) ?></td>
-<td><?= e($row->Qnty) ?></td>
+<td><?= e(fmt_numeric($row->PurPrice)) ?></td>
+<td><?= e(fmt_numeric($row->Qnty)) ?></td>
 <td><?= e($Price) ?></td>
 </tr>
 <?php $PurPrice += (float)$row->PurPrice; $Qnty += (float)$row->Qnty; $Total += $Price; endforeach; $FTotal += $Total; ?>
 <tr><th><b>&nbsp;</b></th><th><b>Sub Total - <?= e(count($group['items'])) ?></b></th><th align="left"><b><?= e(round($PurPrice, 2)) ?></b></th><th align="left"><b><?= e($Qnty) ?></b></th><th align="left"><b><?= e($Total) ?></b></th></tr>
 <?php endforeach; ?>
-<tr><th><b>&nbsp;</b></th><th><b>Total: <?= e($summary->total) ?></b></th><th align="left"><b><?= e(round((float)($summary->tPurPrice ?? 0), 2)) ?></b></th><th align="left"><b><?= e($summary->tQnty) ?></b></th><th align="left"><b><?= e($groups ? $FTotal : '') ?></b></th></tr>
+<tr><th><b>&nbsp;</b></th><th><b>Total: <?= e($summary->total) ?></b></th><th align="left"><b><?= e(round((float)($summary->tPurPrice ?? 0), 2)) ?></b></th><th align="left"><b><?= e(fmt_numeric($summary->tQnty)) ?></b></th><th align="left"><b><?= e($groups ? $FTotal : '') ?></b></th></tr>
 </table>
 </table><br>
 </div>
