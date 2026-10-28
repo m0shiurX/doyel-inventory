@@ -20,11 +20,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $name = (is_string($_POST['name'] ?? null) ? $_POST['name'] : '');
     if ($username === '' || $name === '' || $password === '') echo '<span class="warning">Name, username and a nonempty password are required.</span>';
     elseif (preg_match('/\A.{1,30}\z/us', $username) !== 1) echo '<span class="warning">Username must be 30 characters or fewer.</span>';
+    elseif (db_value('SELECT user_id FROM l_user WHERE UserName = ? LIMIT 1', [$username]) !== null) echo '<span class="warning">That username already exists. Choose another username.</span>';
     else {
         try {
         db_exec('INSERT INTO l_user (UserName, password, FullName, email, address, mobile, m_date, userAtho) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [$username, auth_hash_password($password), $name, (is_string($_POST['email'] ?? null) ? $_POST['email'] : ''), (is_string($_POST['addess'] ?? null) ? $_POST['addess'] : ''), (is_string($_POST['mobile'] ?? null) ? $_POST['mobile'] : ''), date('Y-m-d'), 0]);
         echo '<h2>User Added.</h2>';
         $added = true;
+        } catch (PDOException $error) {
+            // The unique key also closes the race between precheck and insert.
+            if (($error->errorInfo[1] ?? null) !== 1062) throw $error;
+            echo '<span class="warning">That username already exists. Choose another username.</span>';
         } catch (UnsupportedPasswordHash $error) { echo '<span class="warning">' . e($error->getMessage()) . '</span>'; }
     }
 }

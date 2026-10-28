@@ -73,7 +73,7 @@
 
 ## S4.5 Production cut-over runbook
 
-**Depends on:** S4.1–S4.4 merged, Phase 3 merged, Windows PHP 8.4 runtime verified (Q1)
+**Depends on:** S4.1–S4.4 merged, Phase 3 merged. Windows PHP 8.4 runtime acceptance (Q1) is a production cut-over gate, not a prerequisite to preparing and locally rehearsing this runbook. Record actual Windows launch/printing checks as pending until executed on the target PC.
 **Owns:** `docs/runbooks/cutover.md`, `tools/prod/`
 **Resolves:** delivery
 

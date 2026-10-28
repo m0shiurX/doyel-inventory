@@ -13,6 +13,8 @@ DOYEL_DB_MIGRATIONS optionally lists comma-separated migration IDs (e.g. 001).
 Each ID must resolve to exactly one repository db/migrations/NNN_*.up.sql file.
 DOYEL_DB_CLEANUP_AS_OF=YYYY-MM-DD opts into local S3.2 cleanup after 002,
 before later migrations. Requires modern doyel_* and ordered 001,002 migrations.
+DOYEL_DB_DEDUP_USERS=1 opts into Q3 local user dedup after 003, before 004.
+Requires exactly 001,002,003,004 plus a valid cleanup as-of, all checked before DROP.
 USAGE
 }
 [ "${1:-}" != -h ] && [ "${1:-}" != --help ] || { usage; exit 0; }
@@ -54,6 +56,10 @@ if [ -n "${DOYEL_DB_CLEANUP_AS_OF:-}" ]; then
     [ -f "$repo/db/cleanup/cleanup.php" ] && [ ! -L "$repo/db/cleanup/cleanup.php" ] || { printf 'Missing cleanup source\n' >&2; exit 1; }
     php -r '$s=$argv[1]; $d=DateTimeImmutable::createFromFormat("!Y-m-d",$s); exit(!$d || $d->format("Y-m-d")!==$s);' "$DOYEL_DB_CLEANUP_AS_OF" || { printf 'Invalid cleanup calendar date\n' >&2; exit 1; }
 fi
+if [ -n "${DOYEL_DB_DEDUP_USERS:-}" ]; then
+    [ "$DOYEL_DB_DEDUP_USERS" = 1 ] && [ "$target" = modern ] && [[ "$dbname" =~ ^doyel_[A-Za-z0-9_]+$ ]] && [ "${DOYEL_DB_MIGRATIONS:-}" = 001,002,003,004 ] && [ -n "${DOYEL_DB_CLEANUP_AS_OF:-}" ] || { printf 'User dedup requires modern doyel_*, 001,002,003,004 and cleanup as-of\n' >&2; exit 1; }
+    [ -f "$repo/db/cleanup/users.php" ] && [ ! -L "$repo/db/cleanup/users.php" ] || { printf 'Missing user dedup source\n' >&2; exit 1; }
+fi
 compose=(docker compose -f "$repo/docker/compose.yaml" --profile "$target")
 mysql_local() {
     "${compose[@]}" exec -T -e MYSQL_PWD=doyel-local "$target-db" \
@@ -81,6 +87,14 @@ if [ -n "${DOYEL_DB_MIGRATIONS:-}" ]; then
             "${cleanup[@]}" --report="$cleanup_dir/preview.json" > "$cleanup_dir/preview.log"
             "${cleanup[@]}" --apply="$cleanup_dir/preview.json" --backup="$cleanup_dir/backup.json" > "$cleanup_dir/apply.log"
             printf 'Applied local S3.2 cleanup after 002 as-of %s (private evidence: %s)\n' "$DOYEL_DB_CLEANUP_AS_OF" "$cleanup_dir"
+        fi
+        if [ "${DOYEL_DB_DEDUP_USERS:-}" = 1 ] && [[ "$(basename "$migration_file")" = 003_* ]]; then
+            dedup_dir=$(mktemp -d "$fixture_dir/s34-reset.XXXXXXXX")
+            chmod 700 "$dedup_dir"
+            dedup=(env DOYEL_DB_HOST=127.0.0.1 DOYEL_DB_PORT=33084 DOYEL_DB_USER=root DOYEL_DB_PASS=doyel-local DOYEL_DB_NAME="$dbname" php -d memory_limit=512M "$repo/db/cleanup/users.php")
+            "${dedup[@]}" --report="$dedup_dir/preview.json" > "$dedup_dir/preview.log"
+            "${dedup[@]}" --apply="$dedup_dir/preview.json" --backup="$dedup_dir/backup.json" > "$dedup_dir/apply.log"
+            printf 'Applied local Q3 user dedup after 003 (private evidence: %s)\n' "$dedup_dir"
         fi
     done
 fi
