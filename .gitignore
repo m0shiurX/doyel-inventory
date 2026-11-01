@@ -17,3 +17,13 @@
 Thumbs.db
 /config.local.php
 /logs/
+
+# Generated Windows runtimes and release outputs (source scripts remain tracked).
+/build/
+/dist/
+/vendor-runtimes/
+/DoyelWindowsBundle*/
+/tools/windows/payload/
+/tools/windows/output/
+/tools/windows/downloads/
+/tools/windows/extracted/
