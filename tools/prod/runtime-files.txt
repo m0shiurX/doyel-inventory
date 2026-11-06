@@ -56,6 +56,7 @@ index.php
 lib/app_version.php
 lib/auth.php
 lib/backup_schema.php
+lib/backup_package.php
 lib/bootstrap.php
 lib/config.php
 lib/csrf.php

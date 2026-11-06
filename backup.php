@@ -9,6 +9,53 @@ set_error_handler(static function (int $severity, string $message, string $file,
     throw new ErrorException($message, 0, $severity, $file, $line);
 });
 
+// Restore packages are completed privately before any download headers are sent.
+if (($_GET['format'] ?? '') === 'restore') {
+    require_once __DIR__ . '/lib/backup_package.php';
+    $packagePath = null;
+    try {
+        session_write_close();
+        $config = app_config();
+        $directory = $config['backup_dir'] ?? '';
+        if (!is_string($directory)) throw new RuntimeException('Private backup directory unavailable');
+        if ($directory === '') {
+            if (PHP_OS_FAMILY === 'Windows' || ($config['env'] ?? '') !== 'development') throw new RuntimeException('Configured private backup directory required');
+            $directory = sys_get_temp_dir() . '/doyel-backup-' . substr(hash('sha256', __DIR__), 0, 16);
+        }
+        // Windows ACLs are provisioned by the owner installer; POSIX mode bits do
+        // not establish that boundary. Both platforms still reject public paths.
+        if (is_link($directory)) throw new RuntimeException('Private backup directory unavailable');
+        $directory = app_errors_private_directory($directory);
+        if (PHP_OS_FAMILY !== 'Windows' && (fileperms($directory) & 0077) !== 0) throw new RuntimeException('Private backup directory permissions required');
+        $packagePath = $directory . '/' . bin2hex(random_bytes(24)) . '.doyel.gz';
+        doyel_backup_package_write(db(), $packagePath);
+        while (ob_get_level() > 0) ob_end_clean();
+        header('Content-Type: application/gzip');
+        header('Content-Disposition: attachment; filename="doyel-backup-' . gmdate('Y-m-d-Hi') . '.doyel.gz"');
+        header('Content-Length: ' . filesize($packagePath));
+        header('Cache-Control: no-store, private');
+        header('X-Content-Type-Options: nosniff');
+        $download = fopen($packagePath, 'rb');
+        if ($download === false) throw new RuntimeException('Backup download unavailable');
+        fpassthru($download);
+        fclose($download);
+    } catch (Throwable $error) {
+        // Do not pass exception text to logs: database errors can contain business values.
+        $reference = app_errors_report(new RuntimeException('Restore package download failed.'));
+        if (!headers_sent()) {
+            while (ob_get_level() > 0) ob_end_clean();
+            header_remove('Content-Disposition');
+            header_remove('Content-Length');
+            http_response_code(500);
+            header('Content-Type: text/plain; charset=UTF-8');
+            echo 'Backup could not be completed. Reference: ' . $reference . "\n";
+        }
+    } finally {
+        if ($packagePath !== null && is_file($packagePath)) unlink($packagePath);
+    }
+    exit;
+}
+
 $connection = null;
 $statement = null;
 try {
