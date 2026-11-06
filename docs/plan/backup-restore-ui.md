@@ -1,8 +1,28 @@
 # Proposal: admin backup, restore and version visibility
 
-Status: **planning only; not implemented**. This proposal changes no application,
-database, credentials or release. It extends the owner-run procedure in
-[cutover.md](../runbooks/cutover.md); implementation needs its own review and gates.
+Status: **implementation in progress, authorized 2026-11-07**. Each slice is
+implemented by a subagent, reviewed and committed on main. Production remains
+owner-run. This extends the procedure in [cutover.md](../runbooks/cutover.md).
+
+Implementation refinement: the browser restore path consumes a versioned,
+gzip JSON Lines **data-only** package (`.doyel.gz`). It never executes uploaded
+SQL. The owner helper creates the trusted canonical schema and inserts validated
+rows with bound parameters. Existing SQL backup/download/import remains usable;
+legacy SQL takes a separate owner-assisted conversion path. Native-client SQL
+safeguards below apply to that separate path, not to execution of browser uploads.
+This reduces the required privilege and parser surface while preserving the
+new-database, evidence-review and controlled-activation workflow.
+
+| Slice | Status |
+| --- | --- |
+| R1 build/schema metadata and version view | complete |
+| R2 data-only backup package | in progress |
+| R3 private jobs/quarantine/helper contract | in progress |
+| R4 candidate import and validation | todo |
+| R5 admin restore/review/status UI | todo |
+| R6 freeze, backup and activation | todo |
+| R7 acceptance/rollback/audit | todo |
+| R8 owner conversion and Windows/package integration | todo |
 
 ## Intended result
 
@@ -141,20 +161,21 @@ separate installer upgrade/repair design exists.
 
 ## Supported input and import safety
 
-First version supports **known current-application backups** with a versioned
-manifest, the exact completed footer and SHA256 of the finalized SQL. Design a
-backward-compatible sidecar metadata envelope so the existing SQL download remains
-usable. Record format version, app build, schema fingerprint/version, engine,
-charset/collation, consistent snapshot time, table inventory/counts, reproducible
-row digests, financial summaries and SQL byte length. Produce SQL and inventory
-from the same snapshot. A checksum proves byte integrity, not uploader trust.
+The UI supports current-application data-only backup packages with a versioned
+manifest, gzip integrity, an exact completed footer and SHA256 of the canonical
+payload. Keep the existing SQL download separately usable. Record format version,
+app build, canonical schema fingerprint/version, consistent snapshot time,
+table columns/counts, next identity counters, reproducible row digests,
+financial summaries and date coverage. Produce all rows and inventory from the
+same database snapshot. A checksum proves byte integrity, not uploader trust.
+No SQL or executable schema definition from the package is executed; column
+names and table DDL always come from the reviewed schema shipped with the app.
 
-Existing app SQL without metadata is explicitly labelled "legacy app backup,
-manifest absent". It requires a separate owner-assisted validation/rehearsal to
-produce trusted evidence; do not claim the completion marker alone establishes
-format, compatibility or authenticity. An old PHP 5 dump routes to the reviewed
-migration procedure, never straight to activation. Unknown engine/schema or a
-newer unsupported schema is refused. No arbitrary third-party SQL upload support.
+Existing SQL is explicitly labelled "SQL backup: owner-assisted import/conversion
+required". A current-schema owner database can be exported as a restore package
+after validation. An old PHP 5 dump routes to the reviewed migration procedure,
+never straight to activation. Unknown engine/schema or a newer unsupported
+schema is refused. No arbitrary SQL upload execution is supported.
 
 Do not build a homemade SQL parser and treat its keyword checks as authorization
 to execute arbitrary SQL. Define the exact accepted exporter format and prove

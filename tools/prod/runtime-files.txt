@@ -1,3 +1,4 @@
+About.php
 Accounts.php
 AddSupplierName.php
 CashCollection.php
@@ -52,7 +53,9 @@ img/shade_br.png
 img/shade_mr.png
 img/shade_tr.png
 index.php
+lib/app_version.php
 lib/auth.php
+lib/backup_schema.php
 lib/bootstrap.php
 lib/config.php
 lib/csrf.php

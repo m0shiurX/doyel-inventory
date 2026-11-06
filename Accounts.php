@@ -32,6 +32,7 @@ $cash = (float)($totals['collection']->allTotal ?? 0) - (float)($totals['expense
     </ul>
     <p align="right">
     <a href="backup.php" target="_blank">Data Backup </a>
+    <?php if (is_admin()): ?><a href="About.php">About Doyel</a><?php endif; ?>
     <a href="Unpost.php">Administrator</a>
     <a href="list_of_user.php">Add User</a>
     <a href="javascript:void(0);" onClick=window.open("password.php","Ratting","width=450,height=300,0,status=0,");>Change Password</a>
