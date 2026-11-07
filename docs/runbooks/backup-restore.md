@@ -1,9 +1,13 @@
 # Backups, restore and application updates
 
-Use the new application's **Accounts > Backup & restore** page with an
-administrator login. A restore prepares a separate database, verifies it against
+Open **Accounts > Backup** as staff or **Accounts > Backup & restore** as an
+administrator. A restore prepares a separate database, verifies it against
 the backup, and retains the previous database. Uploading a file does not switch
 the application or reopen business writes.
+
+Staff and administrators use the single backup link in Accounts. Staff can download
+daily `.doyel.gz` backups. SQL exports, restore uploads, job status and all restore
+actions require an administrator.
 
 ## Choose the right backup
 

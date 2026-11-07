@@ -1,6 +1,8 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
-require_admin();
+require_login();
+// Every restore mutation and job/evidence view still requires an administrator.
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET' || isset($_GET['job']) || isset($_GET['view'])) require_admin();
 require_once __DIR__ . '/lib/app_version.php';
 require_once __DIR__ . '/lib/backup_schema.php';
 require_once __DIR__ . '/lib/restore_jobs.php';
@@ -37,80 +39,84 @@ function restore_ui_text(mixed $value): string
 {
     return is_scalar($value) ? substr((string)$value, 0, 180) : 'Unavailable';
 }
-$root = (string)(app_config()['restore_dir'] ?? '');
-$message = ''; $status = null; $validation = null; $job = '';
-$viewStatus = ($_GET['view'] ?? '') === 'status';
-try {
-    if (isset($_GET['job'])) {
-        if (!is_string($_GET['job'])) throw new RuntimeException();
-        $job = restore_jobs_id($_GET['job']);
-    }
-    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-        // Oversized requests can lose both POST and FILES at PHP's boundary.
-        if ($_POST === [] && $_FILES === []) {
-            http_response_code(413);
-            $message = 'The upload was missing or exceeded the server upload limit. Choose a .doyel.gz file up to 64 MiB; the owner may need to raise PHP upload limits.';
-        } else {
-            require_csrf();
-            $operation = $_POST['operation'] ?? '';
-            if (!is_string($operation)) throw new RuntimeException();
-            if (function_exists('restore_maintenance_read_only') && restore_maintenance_read_only() && !in_array($operation, ['accept','rollback'], true)) throw new RuntimeException();
-            $nonce = $_POST['nonce'] ?? '';
-            $purpose = $operation === 'upload' ? 'upload' : $operation . ':' . $job;
-            if (!is_string($nonce) || ($_SESSION['restore_nonces'][$nonce] ?? null) !== $purpose) throw new RuntimeException();
-            if ($root === '') throw new RuntimeException();
-            $adminId = current_user_id();
-            if ($adminId === null) throw new RuntimeException();
-            if ($operation === 'upload') {
-                $upload = $_FILES['backup'] ?? [];
-                if (!is_array($upload) || !is_string($upload['name'] ?? null) || !str_ends_with(strtolower($upload['name']), '.doyel.gz')) {
-                    $message = 'Choose a .doyel.gz restore backup. SQL backups require owner-assisted conversion; SQL is never executed here.';
-                    http_response_code(400);
-                } elseif (($upload['error'] ?? null) !== UPLOAD_ERR_OK) {
-                    $message = 'The upload did not complete. Check the file size and server upload limit, then retry.';
-                    http_response_code(400);
-                } else {
-                    $receipt = restore_job_create_upload($root, $upload, $adminId, $nonce);
-                    redirect('Restore.php?job=' . $receipt['id']);
-                }
-            } elseif (in_array($operation, ['activation_request','accept','rollback'], true) && $job !== '') {
-                $status = restore_ui_status(restore_job_status($root, $job));
-                $allowed = $operation === 'activation_request' ? ['ready'] : ($operation === 'accept' ? ['awaiting_acceptance'] : ['frozen','backed_up','awaiting_acceptance']);
-                if (!in_array($status['state'], $allowed, true) || ($_POST['confirm'] ?? '') !== 'yes') throw new RuntimeException();
-                if ($operation === 'activation_request') {
-                    $validation = restore_ui_validation($root, $job);
-                    if ($validation === null || ($validation['schema']['compatible'] ?? null) !== true || ($validation['comparisons']['row_digests_match'] ?? null) !== true || ($validation['comparisons']['inventory_match'] ?? null) !== true || ($validation['comparisons']['foreign_keys_valid'] ?? null) !== true || !is_string($validation['backup_asof'] ?? null) || !is_string($validation['candidate_database'] ?? null) || !is_string($validation['expected_active_database'] ?? null) || ($_POST['work_gap'] ?? '') !== 'yes') throw new RuntimeException();
-                }
-                $password = $_POST['password'] ?? '';
-                $user = db_one('SELECT password, userAtho FROM l_user WHERE user_id = ?', [$adminId]);
-                $verified = is_string($password) && strlen($password) <= 4096 && $user !== null && (string)$user->userAtho === '1' && auth_password_matches($password, (string)$user->password);
-                unset($password, $_POST['password'], $user);
-                if (!$verified) {
-                    http_response_code(403); $message = 'Administrator password verification failed. Enter your current administrator password again.';
-                } else {
-                    restore_job_request($root, $job, $operation, $adminId, $nonce, true);
-                    $_SESSION['restore_requested'] = $job;
-                    redirect('Restore.php?job=' . $job);
-                }
-            } else throw new RuntimeException();
+$message = ''; $status = null; $requested = false;
+if (is_admin()) {
+    $root = (string)(app_config()['restore_dir'] ?? '');
+    $message = ''; $status = null; $validation = null; $job = '';
+    $viewStatus = ($_GET['view'] ?? '') === 'status';
+    try {
+        if (isset($_GET['job'])) {
+            if (!is_string($_GET['job'])) throw new RuntimeException();
+            $job = restore_jobs_id($_GET['job']);
         }
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            // Oversized requests can lose both POST and FILES at PHP's boundary.
+            if ($_POST === [] && $_FILES === []) {
+                http_response_code(413);
+                $message = 'The upload was missing or exceeded the server upload limit. Choose a .doyel.gz file up to 64 MiB; the owner may need to raise PHP upload limits.';
+            } else {
+                require_csrf();
+                $operation = $_POST['operation'] ?? '';
+                if (!is_string($operation)) throw new RuntimeException();
+                if (function_exists('restore_maintenance_read_only') && restore_maintenance_read_only() && !in_array($operation, ['accept','rollback'], true)) throw new RuntimeException();
+                $nonce = $_POST['nonce'] ?? '';
+                $purpose = $operation === 'upload' ? 'upload' : $operation . ':' . $job;
+                if (!is_string($nonce) || ($_SESSION['restore_nonces'][$nonce] ?? null) !== $purpose) throw new RuntimeException();
+                if ($root === '') throw new RuntimeException();
+                $adminId = current_user_id();
+                if ($adminId === null) throw new RuntimeException();
+                if ($operation === 'upload') {
+                    $upload = $_FILES['backup'] ?? [];
+                    if (!is_array($upload) || !is_string($upload['name'] ?? null) || !str_ends_with(strtolower($upload['name']), '.doyel.gz')) {
+                        $message = 'Choose a .doyel.gz restore backup. SQL backups require owner-assisted conversion; SQL is never executed here.';
+                        http_response_code(400);
+                    } elseif (($upload['error'] ?? null) !== UPLOAD_ERR_OK) {
+                        $message = 'The upload did not complete. Check the file size and server upload limit, then retry.';
+                        http_response_code(400);
+                    } else {
+                        $receipt = restore_job_create_upload($root, $upload, $adminId, $nonce);
+                        redirect('Restore.php?job=' . $receipt['id']);
+                    }
+                } elseif (in_array($operation, ['activation_request','accept','rollback'], true) && $job !== '') {
+                    $status = restore_ui_status(restore_job_status($root, $job));
+                    $allowed = $operation === 'activation_request' ? ['ready'] : ($operation === 'accept' ? ['awaiting_acceptance'] : ['frozen','backed_up','awaiting_acceptance']);
+                    if (!in_array($status['state'], $allowed, true) || ($_POST['confirm'] ?? '') !== 'yes') throw new RuntimeException();
+                    if ($operation === 'activation_request') {
+                        $validation = restore_ui_validation($root, $job);
+                        if ($validation === null || ($validation['schema']['compatible'] ?? null) !== true || ($validation['comparisons']['row_digests_match'] ?? null) !== true || ($validation['comparisons']['inventory_match'] ?? null) !== true || ($validation['comparisons']['foreign_keys_valid'] ?? null) !== true || !is_string($validation['backup_asof'] ?? null) || !is_string($validation['candidate_database'] ?? null) || !is_string($validation['expected_active_database'] ?? null) || ($_POST['work_gap'] ?? '') !== 'yes') throw new RuntimeException();
+                    }
+                    $password = $_POST['password'] ?? '';
+                    $user = db_one('SELECT password, userAtho FROM l_user WHERE user_id = ?', [$adminId]);
+                    $verified = is_string($password) && strlen($password) <= 4096 && $user !== null && (string)$user->userAtho === '1' && auth_password_matches($password, (string)$user->password);
+                    unset($password, $_POST['password'], $user);
+                    if (!$verified) {
+                        http_response_code(403); $message = 'Administrator password verification failed. Enter your current administrator password again.';
+                    } else {
+                        restore_job_request($root, $job, $operation, $adminId, $nonce, true);
+                        $_SESSION['restore_requested'] = $job;
+                        redirect('Restore.php?job=' . $job);
+                    }
+                } else throw new RuntimeException();
+            }
+        }
+        if ($job !== '') {
+            $status = restore_ui_status(restore_job_status($root, $job));
+            $validation = restore_ui_validation($root, $job);
+        }
+    } catch (Throwable $error) {
+        http_response_code(400);
+        $message = 'Restore request unavailable or no longer valid. Reload this page and try again. Ask the owner to check private restore storage and the job reference if this continues.';
     }
-    if ($job !== '') {
-        $status = restore_ui_status(restore_job_status($root, $job));
-        $validation = restore_ui_validation($root, $job);
+    if ($viewStatus) {
+        header('Content-Type: application/json; charset=UTF-8');
+        if ($status === null || $message !== '') { http_response_code(400); echo json_encode(['error' => 'Status unavailable. Reopen the restore page.']); }
+        else echo json_encode($status, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        exit;
     }
-} catch (Throwable $error) {
-    http_response_code(400);
-    $message = 'Restore request unavailable or no longer valid. Reload this page and try again. Ask the owner to check private restore storage and the job reference if this continues.';
+    $requested = $job !== '' && ($_SESSION['restore_requested'] ?? null) === $job;
+    unset($_SESSION['restore_requested']);
 }
-if ($viewStatus) {
-    header('Content-Type: application/json; charset=UTF-8');
-    if ($status === null || $message !== '') { http_response_code(400); echo json_encode(['error' => 'Status unavailable. Reopen the restore page.']); }
-    else echo json_encode($status, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
-    exit;
-}
-$requested = $job !== '' && ($_SESSION['restore_requested'] ?? null) === $job;
-unset($_SESSION['restore_requested']);
+$pageTitle = is_admin() ? 'Backup & restore' : 'Backup';
 $version = doyel_app_version(); $engine = 'Unavailable'; $compatible = false;
 try {
     $server = (string)db()->query('SELECT VERSION()')->fetchColumn();
@@ -118,11 +124,11 @@ try {
     doyel_schema_assert(db()); $compatible = true;
 } catch (Throwable $error) {}
 ?>
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Backup &amp; restore</title><link href="css/Style.css" rel="stylesheet"><link href="css/restore.css" rel="stylesheet"></head><body><div id="main" style="margin:0 auto">
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><?= e($pageTitle) ?></title><link href="css/Style.css" rel="stylesheet"><link href="css/restore.css" rel="stylesheet"></head><body><div id="main" style="margin:0 auto">
 <?php include __DIR__ . '/menu.php'; ?>
 <main class="restore-panel" id="restore-panel">
 <div class="restore-head">
-  <h1><span class="lang-en">Backup &amp; restore</span><span class="lang-bn">ব্যাকআপ এবং রিস্টোর</span></h1>
+  <h1><span class="lang-en"><?= e($pageTitle) ?></span><span class="lang-bn"><?= is_admin() ? 'ব্যাকআপ এবং রিস্টোর' : 'ব্যাকআপ' ?></span></h1>
   <div class="restore-actions">
     <button type="button" id="lang-toggle" class="battun" onclick="document.getElementById('restore-panel').classList.toggle('show-bn'); this.textContent = document.getElementById('restore-panel').classList.contains('show-bn') ? 'English' : 'বাংলা';">বাংলা</button>
     <a href="Accounts.php"><span class="lang-en">Back to Accounts</span><span class="lang-bn">অ্যাকাউন্টসে ফিরুন</span></a>
@@ -138,10 +144,11 @@ try {
     <div class="restore-option">
       <div class="restore-option-info">
         <strong><span class="lang-en">Restore backup (.doyel.gz)</span><span class="lang-bn">রিস্টোর ব্যাকআপ (.doyel.gz)</span></strong>
-        <p><span class="lang-en">Daily backup file to restore directly on this page.</span><span class="lang-bn">এই পেজ থেকে রিস্টোর করার প্রতিদিনের ব্যাকআপ ফাইল।</span></p>
+        <p><span class="lang-en">Save this daily backup to another device. An administrator can restore it here.</span><span class="lang-bn">প্রতিদিনের ব্যাকআপ অন্য ডিভাইসে রাখুন। অ্যাডমিন এই পেজ থেকে রিস্টোর করতে পারবেন।</span></p>
       </div>
       <a href="backup.php?format=restore"><span class="lang-en">Download restore backup (.doyel.gz)</span><span class="lang-bn">ডাউনলোড (.doyel.gz)</span></a>
     </div>
+    <?php if (is_admin()): ?>
     <div class="restore-option">
       <div class="restore-option-info">
         <strong><span class="lang-en">SQL backup (.sql)</span><span class="lang-bn">SQL ব্যাকআপ (.sql)</span></strong>
@@ -149,8 +156,10 @@ try {
       </div>
       <a href="backup.php"><span class="lang-en">Download SQL backup</span><span class="lang-bn">ডাউনলোড (.sql)</span></a>
     </div>
+    <?php endif; ?>
   </section>
 
+  <?php if (is_admin()): ?>
   <section class="restore-card">
     <h2><span class="lang-en">2. Restore Backup</span><span class="lang-bn">২. ব্যাকআপ রিস্টোর</span></h2>
     <ol class="restore-steps">
@@ -171,6 +180,9 @@ try {
     <label><span class="lang-en">Backup file (.doyel.gz, max 64 MiB)</span><span class="lang-bn">ব্যাকআপ ফাইল (.doyel.gz, সর্বোচ্চ 64 MiB)</span><input type="file" name="backup" accept=".doyel.gz" required></label><button type="submit"><span class="lang-en">Upload and prepare</span><span class="lang-bn">আপলোড করুন</span></button></form>
     <?php endif; ?>
   </section>
+  <?php else: ?>
+  <section class="restore-card"><h2><span class="lang-en">Restoring a backup</span><span class="lang-bn">ব্যাকআপ রিস্টোর</span></h2><p><span class="lang-en">Staff can download daily backups. Ask an administrator to restore a saved backup.</span><span class="lang-bn">স্টাফ প্রতিদিনের ব্যাকআপ ডাউনলোড করতে পারবেন। সংরক্ষিত ব্যাকআপ রিস্টোর করতে অ্যাডমিনের সাহায্য নিন।</span></p></section>
+  <?php endif; ?>
 </div>
 
 <?php if ($status !== null): ?>
@@ -198,6 +210,6 @@ try {
 
 <div class="restore-sysbar">
   <span>Version <?= e($version['version']) ?> (<?= e($version['build']) ?>), <?= e($engine) ?>, schema <?= e($version['schema_version']) ?>: <?= $compatible ? 'compatible' : 'unconfirmed; owner review required' ?>.</span>
-  <a href="About.php"><span class="lang-en">About Doyel</span><span class="lang-bn">ডয়েল সম্পর্কে</span></a>
+  <?php if (is_admin()): ?><a href="About.php"><span class="lang-en">About Doyel</span><span class="lang-bn">ডয়েল সম্পর্কে</span></a><?php endif; ?>
 </div>
 </main><?php include __DIR__ . '/footer.php'; ?></div></body></html>

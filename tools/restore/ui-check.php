@@ -62,7 +62,21 @@ try {
     $guest='';for($i=0;$i<30;$i++){if(r5_http('Restore.php',$guest)['status']!==0)break;usleep(100000);}
     r5_assert(r5_http('Restore.php',$guest)['status']===302,'guest redirect');
     $admin='';$staff='';r5_assert(r5_login('fixture-admin','r5-admin-password',$admin)['status']===302,'fresh admin login');r5_assert(r5_login('fixture-staff','r5-staff-password',$staff)['status']===302,'fresh staff login');
-    r5_assert(r5_http('Restore.php',$staff)['status']===302,'ordinary role redirect');
+    $staffPage=r5_http('Restore.php',$staff);
+    r5_assert($staffPage['status']===200 && str_contains($staffPage['body'],'backup.php?format=restore') && !str_contains($staffPage['body'],'name="operation"') && !str_contains($staffPage['body'],'Download SQL backup'),'staff sees daily backup without restore controls or SQL export');
+    foreach (['backup.php','backup.php?format=restore'] as $path) r5_assert(r5_http($path,$guest)['status']===302,'guest backup denied '.$path);
+    r5_assert(r5_http('backup.php',$staff)['status']===302,'staff SQL export denied');
+    $download=r5_http('backup.php?format=restore',$staff);
+    r5_assert($download['status']===200,'staff daily backup download');
+    $packagePath=$private.'/staff.doyel.gz';file_put_contents($packagePath,$download['body']);
+    $package=doyel_backup_package_read($packagePath);
+    r5_assert($package['header']['tables']['l_user']['count']==='2','staff backup passes package verification and includes accounts');
+    foreach (['upload','activation_request','accept','rollback'] as $operation) r5_assert(r5_http('Restore.php',$staff,'POST',http_build_query(['operation'=>$operation]))['status']===302,'staff restore operation denied '.$operation);
+    r5_assert(r5_http('Restore.php?job=bad',$staff)['status']===302 && r5_http('Restore.php?view=status',$staff)['status']===302,'staff job and status views denied');
+    foreach ([$staff,$admin] as $cookie) {
+        $accounts=r5_http('Accounts.php',$cookie);
+        r5_assert($accounts['status']===200 && substr_count($accounts['body'],'href="Restore.php"')===1 && !str_contains($accounts['body'],'href="backup.php"'),'single backup entry in Accounts');
+    }
     $page=r5_http('Restore.php',$admin);r5_assert($page['status']===200 && str_contains($page['body'],'schema 1: compatible'),'admin canonical schema overview');
     r5_assert(r5_http('Restore.php?job=bad&view=status',$admin)['status']===400,'strict job ID');
     r5_assert(r5_http('Restore.php',$admin,'POST')['status']===413,'missing POST bounded error');

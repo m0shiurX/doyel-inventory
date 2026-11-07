@@ -6,7 +6,7 @@ after installation.
 
 ## Download status
 
-The [1.1.0 Windows prerelease](https://github.com/m0shiurX/doyel-inventory/releases/tag/windows-bundle-2026-11-07-2)
+The [1.1.0 Windows prerelease](https://github.com/m0shiurX/doyel-inventory/releases/tag/windows-bundle-2026-11-07-4)
 contains the application, Windows runtimes, installer build tools and a separate
 application-only update. **It is a build bundle, not a ready-to-install Doyel EXE.**
 It was assembled and checked on macOS; Windows installation, updates, restore and

@@ -1,6 +1,8 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
-require_admin();
+require_login();
+// Staff may save daily restore packages; raw SQL exports remain administrator-only.
+if (($_GET['format'] ?? '') !== 'restore') require_admin();
 
 // Downloads must never contain a PHP warning or the application's HTML error page.
 ini_set('display_errors', '0');
