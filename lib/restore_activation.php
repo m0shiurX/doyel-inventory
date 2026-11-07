@@ -9,6 +9,11 @@ function restore_activation_identifier(string $name): string
     if (!preg_match('/^[a-zA-Z0-9_]{1,64}$/D', $name)) throw new RuntimeException('Unsafe database identity');
     return '`' . $name . '`';
 }
+/** Test-only owner fixture checkpoints; no request can select code or a command. */
+function restore_activation_checkpoint(array $config,string $point): void
+{
+    if (($config['fixture'] ?? false)===true && is_callable($config['fixture_checkpoint'] ?? null)) ($config['fixture_checkpoint'])($point);
+}
 function restore_activation_pdo(array $owner, ?string $database = null, ?array $runtime = null): PDO
 {
     $pdo = new PDO('mysql:host=' . $owner['host'] . ';port=' . $owner['port'] . ($database === null ? '' : ';dbname=' . trim(restore_activation_identifier($database), '`')) . ';charset=utf8mb4',
@@ -129,6 +134,7 @@ function restore_activation_run(array $config, string $id, array $credentials): 
         $saved=fopen($dir . '/runtime-before.php', 'xb'); if ($saved === false) throw new RuntimeException('Cannot preserve old config');
         try { chmod($dir . '/runtime-before.php',0600); doyel_backup_package_write_bytes($saved,$oldBytes); if (!fflush($saved) || (function_exists('fsync') && !fsync($saved))) throw new RuntimeException('Cannot sync old config'); } finally { fclose($saved); }
         restore_jobs_write_json($dir . '/recovery.json', $recovery);
+        restore_activation_checkpoint($config,'activation_prepared');
         restore_maintenance_provision($root);
         restore_job_transition($root, $id, 'ready', 'activation_requested'); $state = 'activation_requested';
         restore_jobs_control_write($root, ['mode'=>'frozen','generation'=>$old['restore_generation'],'active_job'=>$id]); $frozen = true;
@@ -138,6 +144,7 @@ function restore_activation_run(array $config, string $id, array $credentials): 
         $owner->exec('ALTER USER ' . $accountSql . ' ACCOUNT LOCK'); $locked = true;
         $recovery['phase']='old_account_locked'; restore_jobs_write_json($dir . '/recovery.json',$recovery);
         restore_activation_kill_runtime($owner, $account);
+        restore_activation_checkpoint($config,'activation_old_locked');
         $owner->exec('CREATE USER ' . $newAccountSql . ' IDENTIFIED BY ' . $owner->quote($newPassword));
         $owner->exec('GRANT SELECT ON ' . '`' . str_replace('_', '\\_', $newDb) . '`.* TO ' . $newAccountSql);
 
@@ -155,11 +162,13 @@ function restore_activation_run(array $config, string $id, array $credentials): 
         restore_jobs_write_json($dir . '/pre-switch-receipt.json', $verified);
         $recovery['phase']='backed_up'; $recovery['backup_sha256']=hash_file('sha256',$backup); restore_jobs_write_json($dir . '/recovery.json',$recovery);
         restore_job_transition($root, $id, $state, 'backed_up', ['backup_ref'=>'pre_switch','retained_ref'=>'retained_database']); $state = 'backed_up';
+        restore_activation_checkpoint($config,'activation_backed_up');
         if (hash_file('sha256', $config['runtime_config']) !== $originalHash) throw new RuntimeException('Runtime configuration changed concurrently');
         restore_job_transition($root, $id, $state, 'switching'); $state = 'switching';
         // From here every error requires owner reconciliation; never reopen automatically.
         $switched = true;
         restore_activation_config_write($config['runtime_config'], $next, $config['prepare_config_acl'] ?? null);
+        restore_activation_checkpoint($config,'activation_config_switched');
         $candidate['activated']=true; restore_jobs_write_json($dir . '/candidate.json',$candidate);
         $recovery['phase'] = 'config_switched'; $recovery['new_sha256'] = hash_file('sha256', $config['runtime_config']);
         restore_jobs_write_json($dir . '/recovery.json', $recovery);
