@@ -235,8 +235,8 @@ if ($BillInfo !== null) {
         <tr>
           <td>&nbsp;</td>
           <td>&nbsp;</td>
-          <td><input onClick="addPost();" type="button" name="Button" value="   ADD   "></td>
           <td>&nbsp;</td>
+          <td><input onClick="addPost();" type="button" name="Button" value="   ADD   "></td>
         </tr>
 
       </table></td>

@@ -102,6 +102,7 @@ if ($id !== false && $id > 0) {
 
    </div>
 </div>
+<?php include 'footer.php'; ?>
 </div>
 </body>
 </html>

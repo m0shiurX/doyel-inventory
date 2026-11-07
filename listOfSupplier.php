@@ -76,7 +76,6 @@ foreach (db_all('SELECT SupplierId, SupplierName FROM canteen_supplier WHERE D =
 ?>
         </table>
     </div>
-</div>
 
 <?php include 'footer.php'; ?>
 </div>

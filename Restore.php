@@ -120,28 +120,65 @@ try {
 ?>
 <!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Backup &amp; restore</title><link href="css/Style.css" rel="stylesheet"><link href="css/restore.css" rel="stylesheet"></head><body><div id="main" style="margin:0 auto">
 <?php include __DIR__ . '/menu.php'; ?>
-<main class="restore-panel"><h1>Backup &amp; restore</h1>
-<p>Installed application <?= e($version['version']) ?> · build <?= e($version['build']) ?> · <?= e($engine) ?> · schema <?= e($version['schema_version']) ?>: <?= $compatible ? 'compatible' : 'unconfirmed; owner review required' ?>.</p>
-<p><a href="backup.php?format=restore">Download restore backup (.doyel.gz)</a> · <a href="backup.php">Download SQL backup</a> · <a href="About.php">About Doyel</a></p>
-<p>Restore prepares a new database. The old database and a verified pre-switch backup are retained. An older backup may omit recent work; newer work is never merged automatically. SQL backups need owner-assisted conversion.</p>
+<main class="restore-panel" id="restore-panel">
+<div class="restore-head">
+  <h1><span class="lang-en">Backup &amp; restore</span><span class="lang-bn">ব্যাকআপ এবং রিস্টোর</span></h1>
+  <div class="restore-actions">
+    <button type="button" id="lang-toggle" class="battun" onclick="document.getElementById('restore-panel').classList.toggle('show-bn'); this.textContent = document.getElementById('restore-panel').classList.contains('show-bn') ? 'English' : 'বাংলা';">বাংলা</button>
+    <a href="Accounts.php"><span class="lang-en">Back to Accounts</span><span class="lang-bn">অ্যাকাউন্টসে ফিরুন</span></a>
+  </div>
+</div>
+
 <?php if ($message !== ''): ?><p class="restore-message" role="alert"><?= e($message) ?></p><?php endif; ?>
-<?php if ($requested): ?><p class="restore-message">Request recorded. Waiting for database maintenance helper and independent owner approval. No switch or acceptance is completed by this page.</p><?php endif; ?>
-<?php if ($root === ''): ?>
-<h2>Owner setup required</h2><p>The owner must provision private restore storage outside the website, its inbox and published status permissions, and the offline database maintenance helper; then configure restore_dir. This page cannot create owner storage or install privileged credentials.</p>
-<?php elseif (function_exists('restore_maintenance_read_only') && restore_maintenance_read_only()): ?>
-<p>Read-only acceptance is in progress. New uploads and activation requests wait until maintenance is complete.</p>
-<?php else: ?>
-<h2>Prepare a restore</h2><form method="post" enctype="multipart/form-data" action="Restore.php">
-<?php csrf_field(); ?><input type="hidden" name="operation" value="upload"><input type="hidden" name="nonce" value="<?= e(restore_ui_nonce('upload')) ?>"><input type="hidden" name="MAX_FILE_SIZE" value="67108864">
-<label>Restore backup (.doyel.gz, maximum 64 MiB)<input type="file" name="backup" accept=".doyel.gz" required></label><button type="submit">Upload and prepare</button></form>
-<p>Preparation waits for the owner helper. Closing this page does not cancel the job. Keep its reference to reopen progress.</p>
-<?php endif; ?>
+<?php if ($requested): ?><p class="restore-message"><span class="lang-en">Request recorded. Open <strong>Doyel Database Maintenance</strong> on this PC to continue.</span><span class="lang-bn">অনুরোধ জমা হয়েছে। কম্পিউটারের <strong>Doyel Database Maintenance</strong> খুলে পরবর্তী ধাপ সম্পন্ন করুন।</span></p><?php endif; ?>
+
+<div class="restore-grid">
+  <section class="restore-card">
+    <h2><span class="lang-en">1. Download Backup</span><span class="lang-bn">১. ব্যাকআপ ডাউনলোড</span></h2>
+    <div class="restore-option">
+      <div class="restore-option-info">
+        <strong><span class="lang-en">Restore backup (.doyel.gz)</span><span class="lang-bn">রিস্টোর ব্যাকআপ (.doyel.gz)</span></strong>
+        <p><span class="lang-en">Daily backup file to restore directly on this page.</span><span class="lang-bn">এই পেজ থেকে রিস্টোর করার প্রতিদিনের ব্যাকআপ ফাইল।</span></p>
+      </div>
+      <a href="backup.php?format=restore"><span class="lang-en">Download restore backup (.doyel.gz)</span><span class="lang-bn">ডাউনলোড (.doyel.gz)</span></a>
+    </div>
+    <div class="restore-option">
+      <div class="restore-option-info">
+        <strong><span class="lang-en">SQL backup (.sql)</span><span class="lang-bn">SQL ব্যাকআপ (.sql)</span></strong>
+        <p><span class="lang-en">For technician use only.</span><span class="lang-bn">শুধুমাত্র টেকনিশিয়ানের কাজের জন্য।</span></p>
+      </div>
+      <a href="backup.php"><span class="lang-en">Download SQL backup</span><span class="lang-bn">ডাউনলোড (.sql)</span></a>
+    </div>
+  </section>
+
+  <section class="restore-card">
+    <h2><span class="lang-en">2. Restore Backup</span><span class="lang-bn">২. ব্যাকআপ রিস্টোর</span></h2>
+    <ol class="restore-steps">
+      <li><span class="lang-en">Upload your saved <code>.doyel.gz</code> file.</span><span class="lang-bn">আপনার <code>.doyel.gz</code> ফাইলটি আপলোড করুন।</span></li>
+      <li><span class="lang-en">Run <em>Doyel Database Maintenance</em> from the Start menu.</span><span class="lang-bn">Start মেনু থেকে <em>Doyel Database Maintenance</em> চালু করুন।</span></li>
+      <li><span class="lang-en">Confirm here with your admin password.</span><span class="lang-bn">এখানে অ্যাডমিন পাসওয়ার্ড দিয়ে নিশ্চিত করুন।</span></li>
+    </ol>
+    <?php if ($root === ''): ?>
+    <div class="restore-setup-box">
+      <strong><span class="lang-en">Owner setup required</span><span class="lang-bn">সেটআপ প্রয়োজন</span></strong>
+      <p><span class="lang-en">Ask your support technician to set up the maintenance helper and <code>restore_dir</code>.</span><span class="lang-bn">রিস্টোর চালু করতে টেকনিশিয়ানের সাহায্য নিন।</span></p>
+    </div>
+    <?php elseif (function_exists('restore_maintenance_read_only') && restore_maintenance_read_only()): ?>
+    <p class="restore-message"><span class="lang-en">Read-only acceptance is in progress. New uploads and activation requests wait until maintenance is complete.</span><span class="lang-bn">রিস্টোর যাচাই চলছে। কাজ শেষ না হওয়া পর্যন্ত নতুন আপলোড বন্ধ থাকবে।</span></p>
+    <?php else: ?>
+    <form method="post" enctype="multipart/form-data" action="Restore.php">
+    <?php csrf_field(); ?><input type="hidden" name="operation" value="upload"><input type="hidden" name="nonce" value="<?= e(restore_ui_nonce('upload')) ?>"><input type="hidden" name="MAX_FILE_SIZE" value="67108864">
+    <label><span class="lang-en">Backup file (.doyel.gz, max 64 MiB)</span><span class="lang-bn">ব্যাকআপ ফাইল (.doyel.gz, সর্বোচ্চ 64 MiB)</span><input type="file" name="backup" accept=".doyel.gz" required></label><button type="submit"><span class="lang-en">Upload and prepare</span><span class="lang-bn">আপলোড করুন</span></button></form>
+    <?php endif; ?>
+  </section>
+</div>
+
 <?php if ($status !== null): ?>
-<section id="restore-job" data-job="<?= e($job) ?>" data-state="<?= e($status['state']) ?>"><h2>Restore job</h2><p>Reference: <code><?= e($job) ?></code></p><p>Stage: <strong id="restore-state"><?= e(str_replace('_', ' ', $status['state'])) ?></strong></p><p id="restore-poll" role="status">Waiting for database maintenance helper. The helper runs outside this website.</p>
+<section id="restore-job" class="restore-card" data-job="<?= e($job) ?>" data-state="<?= e($status['state']) ?>"><h2><span class="lang-en">3. Restore job</span><span class="lang-bn">৩. রিস্টোর স্ট্যাটাস</span></h2><p>Reference: <code><?= e($job) ?></code> | Stage: <strong id="restore-state"><?= e(str_replace('_', ' ', $status['state'])) ?></strong></p><p id="restore-poll" role="status">Waiting for database maintenance helper. The helper runs outside this website.</p>
 <dl><?php foreach (['submitted_at'=>'Submitted (UTC)','updated_at'=>'Updated (UTC)','bytes'=>'Uploaded bytes','sha256'=>'Upload SHA256','candidate_ref'=>'Candidate reference','retained_ref'=>'Retained old database reference','backup_ref'=>'Pre-switch backup reference','error_ref'=>'Owner error reference'] as $key=>$label): if (isset($status[$key])): ?><dt><?= e($label) ?></dt><dd><?= e($status[$key]) ?></dd><?php endif; endforeach; ?></dl>
 <?php if ($validation === null): ?><p>Validation evidence is not yet available. Activation requires completed helper validation.</p>
 <?php else: ?><h3>Candidate review</h3><dl><?php foreach (['backup_asof'=>'Backup as of (UTC)','candidate_database'=>'Proposed candidate database','expected_active_database'=>'Previous/current database'] as $key=>$label): ?><dt><?= e($label) ?></dt><dd><?= e(restore_ui_text($validation[$key] ?? null)) ?></dd><?php endforeach; ?><dt>Current time (UTC)</dt><dd><?= e(gmdate(DATE_ATOM)) ?></dd></dl>
-<p>Source application: <?= e(restore_ui_text($validation['app']['version'] ?? null)) ?> · build <?= e(restore_ui_text($validation['app']['build'] ?? null)) ?> · source schema <?= e(restore_ui_text($validation['schema']['version'] ?? null)) ?>.</p>
+<p>Source application: <?= e(restore_ui_text($validation['app']['version'] ?? null)) ?>, build <?= e(restore_ui_text($validation['app']['build'] ?? null)) ?>, source schema <?= e(restore_ui_text($validation['schema']['version'] ?? null)) ?>.</p>
 <?php $backupTime = is_string($validation['backup_asof'] ?? null) ? strtotime($validation['backup_asof']) : false; if ($backupTime !== false): $ageHours = max(0, (int)floor((time() - $backupTime) / 3600)); ?><p>Backup age now: <?= e(intdiv($ageHours, 24)) ?> days and <?= e($ageHours % 24) ?> hours (UTC comparison).</p><?php endif; ?>
 <p>Potential work gap: all work after the backup time above and before the switch. The current database inventory may be larger than an older candidate; this difference alone does not indicate corruption. The helper must prove the candidate matches the source manifest, row digests, balances and relationships.</p>
 <h3>Validation checks</h3><ul><?php foreach (['row_digests_match'=>'Source row counts and digests','inventory_match'=>'Financial inventory and customer balances','foreign_keys_valid'=>'Relationships'] as $key=>$label): ?><li><?= e($label) ?>: <?= ($validation['comparisons'][$key] ?? null) === true ? 'verified' : 'unconfirmed; owner review required' ?></li><?php endforeach; ?><li>Schema: <?= ($validation['schema']['compatible'] ?? null) === true ? 'compatible' : 'unconfirmed; owner review required' ?></li></ul>
@@ -149,7 +186,7 @@ try {
 <p>Current database counts as of (UTC): <?= e(restore_ui_text($validation['active_counts_asof'] ?? null)) ?>. This snapshot does not freeze later work.</p>
 <h3>Row inventory</h3><table><thead><tr><th>Table</th><th>Current database</th><th>Candidate</th></tr></thead><tbody><?php foreach (doyel_schema_tables() as $table=>$definition): ?><tr><th><?= e($table) ?></th><td><?= e(restore_ui_text($validation['active_row_counts'][$table] ?? null)) ?></td><td><?= e(restore_ui_text($validation['row_counts'][$table] ?? null)) ?></td></tr><?php endforeach; ?></tbody></table>
 <h3>Financial totals</h3><dl><?php foreach ((is_array($validation['financial'] ?? null) ? $validation['financial'] : []) as $key=>$value): if (is_string($key) && preg_match('/^(canteen_[a-z_]+)\.([A-Za-z]+)$/D', $key, $financialKey) && isset(doyel_schema_tables()[$financialKey[1]]) && in_array($financialKey[2], doyel_schema_tables()[$financialKey[1]]['columns'], true) && is_scalar($value) && preg_match('/^-?\d+(?:\.\d+)?$/D', (string)$value)): ?><dt><?= e($key) ?></dt><dd><?= e($value) ?></dd><?php endif; endforeach; ?></dl>
-<h3>Historical coverage</h3><dl><?php foreach (doyel_schema_tables() as $table=>$definition): $dates = $validation['date_coverage'][$table] ?? null; if (is_array($dates)): ?><dt><?= e($table) ?></dt><dd><?= e(restore_ui_text($dates['first'] ?? null)) ?> — <?= e(restore_ui_text($dates['last'] ?? null)) ?></dd><?php endif; endforeach; ?></dl>
+<h3>Historical coverage</h3><dl><?php foreach (doyel_schema_tables() as $table=>$definition): $dates = $validation['date_coverage'][$table] ?? null; if (is_array($dates)): ?><dt><?= e($table) ?></dt><dd><?= e(restore_ui_text($dates['first'] ?? null)) ?> to <?= e(restore_ui_text($dates['last'] ?? null)) ?></dd><?php endif; endforeach; ?></dl>
 <h3>Account roles</h3><p>Imported accounts and password hashes are preserved. No default account is added. The owner must verify a candidate administrator and ordinary-user access through the offline helper before switching.</p><ul><?php foreach ((is_array($validation['roles'] ?? null) ? $validation['roles'] : []) as $role): if (is_array($role) && preg_match('/^\d+$/D', (string)($role['userAtho'] ?? '')) && preg_match('/^\d+$/D', (string)($role['count'] ?? ''))): ?><li>Role <?= e($role['userAtho']) ?>: <?= e($role['count']) ?> accounts</li><?php endif; endforeach; ?></ul>
 <?php endif; ?>
 <?php $operations = $status['state'] === 'ready' && $validation !== null ? ['activation_request'=>'Request activation'] : ($status['state'] === 'awaiting_acceptance' ? ['accept'=>'Request owner acceptance','rollback'=>'Request rollback before reopening writes'] : (in_array($status['state'], ['frozen','backed_up'], true) ? ['rollback'=>'Request safe rollback'] : [])); foreach ($operations as $operation=>$label): ?>
@@ -158,4 +195,9 @@ try {
 <label><input type="checkbox" name="confirm" value="yes" required> I confirm this request for the job shown above. The owner helper must independently approve it.</label><label>Current administrator password<input type="password" name="password" autocomplete="current-password" required maxlength="4096"></label><button type="submit"><?= e($label) ?></button></form><?php endforeach; ?>
 <p>During maintenance the web service may be offline. Reopen this saved job URL when it returns and sign in again if requested; all old sessions expire when databases change. Business writes remain frozen until owner acceptance. Blind rollback is refused after new work begins.</p></section>
 <script src="codes/restore.js" defer></script><?php endif; ?>
-<p><a href="Accounts.php">Back to Accounts</a></p></main><?php include __DIR__ . '/footer.php'; ?></div></body></html>
+
+<div class="restore-sysbar">
+  <span>Version <?= e($version['version']) ?> (<?= e($version['build']) ?>), <?= e($engine) ?>, schema <?= e($version['schema_version']) ?>: <?= $compatible ? 'compatible' : 'unconfirmed; owner review required' ?>.</span>
+  <a href="About.php"><span class="lang-en">About Doyel</span><span class="lang-bn">ডয়েল সম্পর্কে</span></a>
+</div>
+</main><?php include __DIR__ . '/footer.php'; ?></div></body></html>
