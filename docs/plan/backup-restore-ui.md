@@ -18,7 +18,7 @@ new-database, evidence-review and controlled-activation workflow.
 | R1 build/schema metadata and version view | complete |
 | R2 data-only backup package | complete |
 | R3 private jobs/quarantine/helper contract | complete |
-| R4 candidate import and validation | todo |
+| R4 candidate import and validation | complete |
 | R5 admin restore/review/status UI | todo |
 | R6 freeze, backup and activation | todo |
 | R7 acceptance/rollback/audit | todo |
