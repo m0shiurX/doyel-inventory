@@ -46,6 +46,17 @@ work. Unknown code, configuration or account identities stay closed.
 - The fixture suite stubs the HTTP health step, so a new check runs the real
   generated probe through a PHP server with SELECT-only credentials.
 
+## First native Windows result
+
+The first run on a Windows 1.0.0 installation refused before making any change:
+`Untrusted code writer`. Folders under `Program Files` inherit full control for
+`NT SERVICE\TrustedInstaller`, which the code audit treated as untrusted. That
+would have refused every default installation, including a fresh 1.1.0 install.
+
+The audit now accepts that one Windows component account for the code tree only;
+private state remains stricter. Its refusals name the path and SID, and the console
+reason now includes the native error text.
+
 ## Verification
 
 Run on PHP 8.4 and the disposable local MySQL 8.4 fixture:
@@ -55,7 +66,7 @@ Run on PHP 8.4 and the disposable local MySQL 8.4 fixture:
 | PHP lint of `tools/windows` | pass |
 | `tools/windows/update-check.php --mysql` | 54 checks, including seven database/code fixtures and five real process interruptions |
 | `tools/windows/check.php` | pass |
-| `tools/windows/maintenance-check.php --mysql` | 17 checks |
+| `tools/windows/maintenance-check.php --mysql` | 19 checks |
 | `tools/restore/activation-check.php --mysql` | 46 checks |
 | `tools/restore/finish-check.php --mysql` | 39 checks |
 | `tools/restore/ui-check.php --mysql` | 32 HTTP checks |

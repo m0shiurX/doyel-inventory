@@ -22,18 +22,26 @@ function doyel_windows_service_proof(array $service,string $app,string $state): 
         || doyel_windows_key($db[1])!==doyel_windows_key($app.'/mysql/bin/mysqld.exe')
         || doyel_windows_key($db[2]!==''?$db[2]:($db[3] ?? ''))!==doyel_windows_key($state.'/config/my.ini')) throw new RuntimeException('Database service ownership mismatch');
 }
+/** First error from PowerShell stderr, plain or CLIXML. Scripts take secrets only through STDIN. */
+function doyel_windows_native_detail(string $stderr): string
+{
+    if(preg_match_all('~<S S="Error">(.*?)</S>~s',$stderr,$parts))$stderr=html_entity_decode(str_replace('_x000D__x000A_',"\n",implode('',$parts[1])),ENT_QUOTES|ENT_XML1);
+    $message=preg_split('/\R\s*(?:At line:|\+ )/',$stderr,2)[0];
+    return substr(trim(preg_replace('/\s+/',' ',$message)),0,300);
+}
 function doyel_windows_powershell(array $context,string $script,array $input=[],bool $keepDiagnostic=true): string
 {
     if (PHP_OS_FAMILY!=='Windows') throw new RuntimeException('Native Windows required');
     $exe=getenv('SystemRoot').'/System32/WindowsPowerShell/v1.0/powershell.exe';
     if (!is_file($exe)) throw new RuntimeException('Windows PowerShell unavailable');
-    $encoded=base64_encode(mb_convert_encoding("$"."ErrorActionPreference='Stop'; [Console]::OutputEncoding=[Text.UTF8Encoding]::new(); ".$script,'UTF-16LE','UTF-8'));
+    $encoded=base64_encode(mb_convert_encoding("$"."ErrorActionPreference='Stop'; $"."ProgressPreference='SilentlyContinue'; [Console]::OutputEncoding=[Text.UTF8Encoding]::new(); ".$script,'UTF-16LE','UTF-8'));
     $out=tempnam($context['state'].'/maintenance','native-');$err=tempnam($context['state'].'/maintenance','native-');
     try {
-        $process=proc_open([$exe,'-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',$encoded],[0=>['pipe','r'],1=>['file',$out,'w'],2=>['file',$err,'w']],$pipes,null,null,['bypass_shell'=>true]);
+        $process=proc_open([$exe,'-NoLogo','-NoProfile','-NonInteractive','-OutputFormat','Text','-EncodedCommand',$encoded],[0=>['pipe','r'],1=>['file',$out,'w'],2=>['file',$err,'w']],$pipes,null,null,['bypass_shell'=>true]);
         if(!is_resource($process)) throw new RuntimeException('Native process unavailable');
         fwrite($pipes[0],json_encode($input,JSON_THROW_ON_ERROR));fclose($pipes[0]);$code=proc_close($process);
         if($code!==0) {
+            $detail=doyel_windows_native_detail((string)file_get_contents($err));
             if($keepDiagnostic){
                 try{
                     // Protect the individual diagnostic even if the failing
@@ -44,7 +52,7 @@ function doyel_windows_powershell(array $context,string $script,array $input=[],
                     fwrite(STDERR,'Private native diagnostic: '.$reference."\n");
                 }catch(Throwable $diagnosticError){fwrite(STDERR,"Native command failed; private diagnostic storage could not be secured.\n");}
             }
-            throw new RuntimeException('Native maintenance command refused');
+            throw new RuntimeException('Native maintenance command refused'.($detail===''?'':': '.$detail));
         }
         $result=file_get_contents($out);if($result===false || strlen($result)>65536)throw new RuntimeException('Invalid native result');return ltrim($result,"\xEF\xBB\xBF");
     } finally {if(is_file($out))unlink($out);if(is_file($err))unlink($err);}
@@ -84,14 +92,16 @@ $trusted=@('S-1-5-18','S-1-5-32-544',[Security.Principal.WindowsIdentity]::GetCu
 $web=([Security.Principal.NTAccount]::new('NT SERVICE\DoyelWeb')).Translate([Security.Principal.SecurityIdentifier]).Value
 $writes=[Security.AccessControl.FileSystemRights]'Write,Delete,DeleteSubdirectoriesAndFiles,ChangePermissions,TakeOwnership'
 $reads=[Security.AccessControl.FileSystemRights]'ReadAndExecute,Synchronize'
+# Folders under Program Files inherit full control for this Windows component account.
+$installer=([Security.Principal.NTAccount]::new('NT SERVICE\TrustedInstaller')).Translate([Security.Principal.SecurityIdentifier]).Value
 function Check-Path($path,$kind){
- $item=Get-Item -LiteralPath $path -Force;if($item.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Reparse point'}
- $acl=Get-Acl -LiteralPath $path;$owner=$acl.GetOwner([Security.Principal.SecurityIdentifier]).Value;if($trusted -notcontains $owner){throw 'Untrusted owner'}
+ $item=Get-Item -LiteralPath $path -Force;if($item.Attributes -band [IO.FileAttributes]::ReparsePoint){throw "Reparse point: $path"}
+ $acl=Get-Acl -LiteralPath $path;$owner=$acl.GetOwner([Security.Principal.SecurityIdentifier]).Value;if($trusted -notcontains $owner -and -not($kind -eq 'code' -and $owner -eq $installer)){throw "Untrusted owner $owner on $path"}
  foreach($r in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])){
   if($r.AccessControlType -ne 'Allow' -or ($r.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly)){continue}
   $sid=$r.IdentityReference.Value;if($trusted -contains $sid){continue}
-  if($kind -eq 'code'){if($r.FileSystemRights -band $writes){throw 'Untrusted code writer'};continue}
-  if($kind -ne 'webread' -or $sid -ne $web -or (($r.FileSystemRights -band $reads) -ne $r.FileSystemRights)){throw 'Untrusted private access'}
+  if($kind -eq 'code'){if($sid -ne $installer -and ($r.FileSystemRights -band $writes)){throw "Untrusted code writer $sid on $path"};continue}
+  if($kind -ne 'webread' -or $sid -ne $web -or (($r.FileSystemRights -band $reads) -ne $r.FileSystemRights)){throw "Untrusted private access $sid on $path"}
  }
 }
 foreach($p in @($v.state,(Join-Path $v.state 'config'))){Check-Path $p 'webread'}

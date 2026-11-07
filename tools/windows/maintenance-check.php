@@ -4,6 +4,9 @@ require_once __DIR__.'/maintenance-lib.php';require_once dirname(__DIR__).'/rest
 $checks=0;
 function r8_assert(bool $pass,string $label):void{global $checks;if(!$pass)throw new RuntimeException($label);$checks++;echo 'PASS '.$label."\n";}
 function r8_refuse(callable $fn,string $label):void{try{$fn();}catch(Throwable $error){r8_assert(true,$label);return;}throw new RuntimeException('Expected refusal '.$label);}
+$clixml='#< CLIXML'."\r\n".'<Objs Version="1.1.0.1"><Obj S="progress"><AV>Preparing modules for first use.</AV></Obj><S S="Error">Untrusted code writer_x000D__x000A_</S><S S="Error">At line:13 char:62_x000D__x000A_</S><S S="Error">+ ... throw_x000D__x000A_</S></Objs>';
+r8_assert(doyel_windows_native_detail($clixml)==='Untrusted code writer','CLIXML native errors reduce to their message');
+r8_assert(doyel_windows_native_detail("Untrusted owner S-1-5-1 on C:\\x\r\nAt line:1 char:1\r\n+ throw\r\n")==='Untrusted owner S-1-5-1 on C:\\x','plain native errors reduce to their message');
 $app='C:/Program Files/Doyel';$state='C:/ProgramData/Doyel';
 $service=['path'=>'"C:\\Program Files\\Doyel\\apache\\bin\\httpd.exe" -k runservice','account'=>'NT AUTHORITY\\LocalService','sid_type'=>1,'config_args'=>['-f','C:\\ProgramData\\Doyel\\config\\httpd.conf'],'database_path'=>'"C:\\Program Files\\Doyel\\mysql\\bin\\mysqld.exe" --defaults-file="C:\\ProgramData\\Doyel\\config\\my.ini" DoyelDB'];
 doyel_windows_service_proof($service,$app,$state);r8_assert(true,'exact owned service paths accepted');

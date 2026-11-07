@@ -13,7 +13,7 @@ Automatic daily backups are not implemented. Do not use it
 on the client's only copy of their data. Use a clean Windows test VM first.
 
 Regular users should start with the [installation and daily-use guide](../../README.md).
-The [1.1.0 Windows prerelease](https://github.com/m0shiurX/doyel-inventory/releases/tag/windows-bundle-2026-11-07)
+The [1.1.0 Windows prerelease](https://github.com/m0shiurX/doyel-inventory/releases/tag/windows-bundle-2026-11-07-2)
 contains the assembled runtime payload and the offline Inno Setup 6.7.4 compiler
 installer in `build-tools`. Extract the full ZIP on Windows, install that compiler
 on the build PC, and run `Build-Windows.bat` in the bundle folder.
