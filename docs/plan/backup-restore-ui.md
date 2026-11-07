@@ -19,7 +19,7 @@ new-database, evidence-review and controlled-activation workflow.
 | R2 data-only backup package | complete |
 | R3 private jobs/quarantine/helper contract | complete |
 | R4 candidate import and validation | complete |
-| R5 admin restore/review/status UI | todo |
+| R5 admin restore/review/status UI | complete; target browser acceptance pending |
 | R6 freeze, backup and activation | implemented; native Windows gate pending |
 | R7 acceptance/rollback/audit | todo |
 | R8 owner conversion and Windows/package integration | todo |
