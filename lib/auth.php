@@ -71,7 +71,7 @@ function authenticate_user(string $username, string $password): ?object
     if ($username === '' || $password === '') return null;
     foreach (db_all('SELECT user_id, UserName, password, userAtho FROM l_user WHERE UserName = ? ORDER BY user_id', [$username]) as $user) {
         if (!auth_password_matches($password, $user->password)) continue;
-        if (password_needs_rehash($user->password, auth_password_algorithm($password))) {
+        if ((!function_exists('restore_maintenance_read_only') || !restore_maintenance_read_only()) && password_needs_rehash($user->password, auth_password_algorithm($password))) {
             // Match the verified hash too, so a concurrent password reset is never overwritten.
             $changed = db_exec('UPDATE l_user SET password = ? WHERE user_id = ? AND password = ?', [auth_hash_password($password), $user->user_id, $user->password]);
             if ($changed === 0) {

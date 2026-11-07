@@ -15,5 +15,7 @@ return [
     'db_pass' => '',
     'db_name' => 'software',
     'env' => 'production',
+    'restore_dir' => '', // Owner-provisioned private restore root; DOYEL_RESTORE_DIR overrides.
+    'restore_generation' => 0, // Owner-managed; do not change manually.
     'backup_dir' => '', // e.g. 'C:\\ProgramData\\Doyel\\backups'
 ];

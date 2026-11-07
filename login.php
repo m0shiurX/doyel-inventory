@@ -15,6 +15,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $_SESSION['Username'] = $user->UserName;
         $_SESSION['admin'] = $user->userAtho;
         $_SESSION['user_id'] = (int)$user->user_id;
+        $_SESSION['restore_generation'] = app_config()['restore_generation'];
         redirect('index.php');
     }
     if ($loginError === '') $loginError = 'Sorry, your account could not be found. Please try again.';
