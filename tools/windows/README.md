@@ -133,6 +133,41 @@ HTTP deny checks, and failure/uninstall handling. The existing
 migrating the real client's legacy data. Do not open business writes on the new
 runtime until that procedure and Windows acceptance pass.
 
+## Application-only updates
+
+The first full installation supplies the runtime once. Subsequent compatible
+updates reuse the installed PHP/Apache/MySQL services and private database:
+
+```sh
+php tools/windows/build-update.php /absolute/new/DoyelAppUpdate-1.1.0 1.1.0-reviewed-commit
+php tools/windows/update-check.php
+```
+
+The builder copies the separate public/owner allowlists, adds matching build
+metadata, a schema requirement and checksums, and supplies `Update-Doyel.bat`.
+No runtime binary, SQL or private connection credential is included. Supply the
+whole extracted folder or a ZIP through a trusted release location/USB. Hashes
+check corruption; they do not authenticate who published a release. Git push
+does not install code on a user's Windows PC.
+
+On Windows, extract everything, close data entry and run the launcher with owner
+approval. Choose `apply`; use `recover` from the same bundle after interruption.
+The update retains code/configuration/database backup references and keeps writes
+closed during its SELECT-only health check. Incompatible schemas require a
+separate reviewed migration. This update does not replace the first PHP 5.6
+runtime migration, and the full first-install EXE must not be rerun over retained
+state. See the [operator guide](../../docs/runbooks/backup-restore.md).
+
+This is a Windows acceptance candidate. Native UAC, PowerShell bootstrap, service
+identity, DACLs, directory rename/reboot recovery and standard-user launching must
+be tested on Windows before distribution. Local fixture adapters do not prove
+those native behaviors.
+
+The full bundle builder optionally accepts a final reviewed build identifier;
+otherwise its metadata uses the source Git commit. Both public and owner trees
+display the same build. Its generated installer version follows the application
+version; the older published prerelease remains unchanged.
+
 ## Local checks
 
 ```sh

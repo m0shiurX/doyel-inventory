@@ -10,9 +10,12 @@ function require_x64_pe(string $path): void {
     $pe = fread($file, 6); fclose($file);
     if (substr($pe, 0, 4) !== "PE\0\0" || unpack('vmachine', substr($pe, 4, 2))['machine'] !== 0x8664) throw new RuntimeException('Windows x64 binary required: ' . basename($path));
 }
+require_once dirname(__DIR__) . '/prod/build-metadata.php';
+require_once dirname(__DIR__,2) . '/lib/app_version.php';
 try {
-    if ($argc !== 6) throw new RuntimeException('Usage: php tools/windows/build-bundle.php <NEW-external-output> <extracted-Apache24> <extracted-PHP84-TS> <extracted-MySQL84> <vc_redist.x64.exe>');
+    if (!in_array($argc,[6,7],true)) throw new RuntimeException('Usage: php tools/windows/build-bundle.php <NEW-external-output> <extracted-Apache24> <extracted-PHP84-TS> <extracted-MySQL84> <vc_redist.x64.exe> [reviewed-build-id]');
     $root = realpath(__DIR__ . '/../..');
+    $buildId=$argv[6] ?? doyel_build_source_id($root); $buildMetadata=doyel_build_metadata($buildId);
     $output = $argv[1];
     $parent = realpath(dirname($output));
     if (!$parent || file_exists($output) || is_link($output)) throw new RuntimeException('Output must be new, with an existing parent');
@@ -70,6 +73,10 @@ try {
     $process = proc_open([PHP_BINARY, $root . '/tools/prod/build-maintenance.php', $output . '/payload/maintenance'], [0 => STDIN, 1 => STDOUT, 2 => STDERR], $pipes);
     if (!is_resource($process) || proc_close($process) !== 0) throw new RuntimeException('Owner maintenance build failed');
     rmdir($output . '/private-build');
+    foreach (['www','maintenance'] as $tree) file_put_contents($output . '/payload/' . $tree . '/lib/build_metadata.php',$buildMetadata);
+    $iss=file_get_contents($output . '/Doyel.iss');
+    $iss=preg_replace('/#define AppVersion "[0-9.]+"/', '#define AppVersion "'.doyel_app_version()['version'].'"', $iss);
+    file_put_contents($output . '/Doyel.iss',$iss);
     // Resolve ProgramData on the client's PC, not the Mac/build machine.
     $stub = <<<'PHP'
 <?php

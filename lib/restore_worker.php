@@ -56,7 +56,7 @@ function restore_worker_load_config(string $path): array
         }
         if (PHP_OS_FAMILY !== 'Windows' && (fileperms($runtimePath) & 0007) !== 0) throw new RuntimeException('Runtime configuration is not private');
         $runtime = require $runtimePath;
-        if (!is_array($runtime) || ($runtime['db_host'] ?? null) !== $config['host'] || (int)($runtime['db_port'] ?? 0) !== $config['port'] || ($runtime['restore_dir'] ?? null) !== $config['restore_dir'] || !is_string($runtime['db_name'] ?? null)) throw new RuntimeException('Runtime connection identity mismatch');
+        if (!is_array($runtime) || ($runtime['db_host'] ?? null) !== $config['host'] || (int)($runtime['db_port'] ?? 0) !== $config['port'] || !is_string($runtime['restore_dir'] ?? null) || restore_jobs_path_key($runtime['restore_dir']) !== restore_jobs_path_key($config['restore_dir']) || !is_string($runtime['db_name'] ?? null)) throw new RuntimeException('Runtime connection identity mismatch');
         $config['active_database'] = restore_worker_identifier($runtime['db_name']);
         $config['runtime_config'] = $runtimePath;
     }

@@ -299,7 +299,7 @@ Install Inno Setup on the developer's Windows machine. Create
 `C:\DoyelBuild\Doyel.iss` with the following **packaging-only example**:
 
 ```iss
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 
 [Setup]
 AppId=DoyelOffline
@@ -341,7 +341,7 @@ To build in the GUI:
 2. Choose **File > Open** and open `C:\DoyelBuild\Doyel.iss`.
 3. Choose **Build > Compile**, or press **F9**.
 4. Fix missing-source errors by checking your staging layout.
-5. Find `C:\DoyelBuild\output\DoyelSetup-1.0.0.exe`.
+5. Find `C:\DoyelBuild\output\DoyelSetup-1.1.0.exe`.
 
 F9 can launch the generated installer after compilation. Use the clean test VM
 for installation; avoid accidentally installing onto your development machine.

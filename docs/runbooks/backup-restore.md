@@ -103,3 +103,42 @@ bundle through a trusted release location or USB, and the Windows owner installs
 it. The website does not download or execute updates. Native Windows service,
 ACL, interruption, standard-user and printing acceptance remains required before
 production use of a new maintenance/update build.
+
+Build an application-only bundle from the reviewed checkout, using a new external
+directory and a reviewed build identifier:
+
+```sh
+php tools/windows/build-update.php /absolute/new/DoyelAppUpdate-1.1.0 1.1.0-reviewed-commit
+```
+
+The output contains `www`, a separate `maintenance` code tree, build/schema
+metadata, a complete SHA256 manifest, the Windows launcher and instructions.
+It contains no runtime binaries, SQL, private connection files or test passwords.
+Compress that entire directory and publish it through the developer's trusted
+release location or supply it on USB. A Git commit or push alone does not update
+an installed Windows application. The earlier Windows prerelease bundle is not
+this new application update.
+
+On the Windows test machine, extract the complete update and double-click
+`Update-Doyel.bat`. The launcher verifies the bootstrap and files before elevated
+PHP execution, copies verified code into protected owner staging, then asks for
+`apply` and a typed confirmation. It refuses an incompatible database schema or
+an installation whose service/configuration/permission identity cannot be proved.
+It stops only DoyelWeb, retains a verified owner-only database backup and previous
+code, swaps application code, increases the session generation and tests the new
+HTTP/PHP/schema path using SELECT-only credentials before opening normal writes.
+
+After success, check **About Doyel** for the supplied build, sign in again and
+verify representative pages and printing. Keep the old code and private backup.
+If interrupted, run the same update bundle and choose `recover`. Before its
+durable commit, recovery restores the previous code and connection with a higher
+generation. After commitment, recovery completes forward and preserves later
+business work. Ambiguous code/configuration/account identities stay closed for
+owner inspection. Recovery never initializes or replaces the MySQL data directory.
+
+The owner evidence is under `%ProgramData%\Doyel\maintenance\updates`, with the
+current update reference in `update-active.json`. Retained code uses uniquely
+named `.doyel-previous-*` siblings beneath the application directory. Failed/new
+code and verified protected release copies are retained for review; this version
+does not automatically prune them. These paths are owner maintenance details,
+not folders to copy into the live database.

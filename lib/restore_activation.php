@@ -65,7 +65,7 @@ function restore_activation_private_config(array $owner): array
     $config = require $path;
     if (!is_array($config)) throw new RuntimeException('Invalid private runtime configuration');
     foreach (['db_host','db_port','db_user','db_pass','db_name','restore_dir','restore_generation'] as $field) if (!array_key_exists($field, $config)) throw new RuntimeException('Explicit runtime configuration required');
-    if ($config['db_host'] !== $owner['host'] || (int)$config['db_port'] !== $owner['port'] || $config['db_name'] !== $owner['active_database'] || $config['restore_dir'] !== $owner['restore_dir'] || !is_int($config['restore_generation']) || $config['restore_generation'] < 0) throw new RuntimeException('Runtime configuration target mismatch');
+    if ($config['db_host'] !== $owner['host'] || (int)$config['db_port'] !== $owner['port'] || $config['db_name'] !== $owner['active_database'] || !is_string($config['restore_dir']) || restore_jobs_path_key($config['restore_dir']) !== restore_jobs_path_key($owner['restore_dir']) || !is_int($config['restore_generation']) || $config['restore_generation'] < 0) throw new RuntimeException('Runtime configuration target mismatch');
     return $config;
 }
 function restore_activation_config_write(string $path, array $config, ?callable $prepareAcl = null): void

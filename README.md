@@ -6,13 +6,17 @@ after installation.
 
 ## Download status
 
+The current source includes a **1.1.0 restore/update candidate**. It has not passed
+native Windows acceptance and is not a newly published installer release. The
+older prerelease below does not include the new restore UI or application updater.
+
 The [Windows bundle prerelease](https://github.com/m0shiurX/doyel-inventory/releases/tag/windows-bundle-2026-11-01)
 contains the application, Windows runtimes, and installer build tools. **It is a
 build bundle, not a ready-to-install Doyel EXE.** It was assembled and checked on
 macOS; Windows installation and printing have not been tested yet.
 
 If you are a regular user, ask your support person for a Windows-tested
-`DoyelSetup-1.0.0.exe` and your login details. You do not need to install developer
+`DoyelSetup-1.1.0.exe` and your login details. You do not need to install developer
 tools or compile the ZIP yourself. Existing business data must be backed up,
 migrated, and verified by your support person before the first installation.
 
@@ -38,7 +42,7 @@ The current installer candidate supports first installation only.
 1. Keep a separate verified backup of any existing Doyel data. Do not uninstall
    or overwrite your old installation before your support person completes the
    migration procedure.
-2. Run the supplied `DoyelSetup-1.0.0.exe` and approve the Windows administrator
+2. Run the supplied `DoyelSetup-1.1.0.exe` and approve the Windows administrator
    prompt.
 3. When asked for the database export, select the prepared `.sql` file supplied
    by your support person. Keep that file private. A legacy database export
@@ -52,10 +56,15 @@ The current installer candidate supports first installation only.
    until the new setup is accepted.
 
 If setup reports an existing installation or retained data, stop and contact
-your support person. Do not delete the data folder to retry. Upgrade, repair,
-and automatic migration are not implemented in this candidate.
+your support person. Do not delete the data folder to retry. The full installer
+remains first-install only. Later application updates use a separate bundle;
+repair and automatic legacy migration are not supplied.
 
 ## Daily use
+
+The linked older prerelease does not contain the new restore/update workflow.
+The current source builds a 1.1.0 candidate; it still needs Windows acceptance
+before your support person supplies it for live use.
 
 1. Open **Doyel** from its shortcut. The local services start automatically with
    Windows; the launcher waits briefly for them before opening the browser.
@@ -88,6 +97,25 @@ Make a backup at the end of each business day and before updates or repairs.
 Automatic scheduled backups are not included in this installer candidate.
 Restoring a backup should be performed by your support person, not by copying
 files into the live database folder.
+
+## Restore a backup or install an update
+
+Administrators can open **Accounts > Backup & restore** to download a restorable
+`.doyel.gz` package or prepare a restore into a separate database. The local
+**Doyel Database Maintenance** shortcut asks for Windows administrator approval
+to process and approve the job. Existing data is retained; writes stay closed
+until acceptance. A SQL export uses the owner-assisted migration/import path.
+
+For later application updates, obtain the reviewed application-only ZIP from
+your support person, extract the complete folder, close data entry and open
+**Update-Doyel.bat**. Approve Windows elevation and type `apply` when prompted.
+It backs up the database, retains previous code, checks the new build and keeps
+your private database connection. PHP, Apache and MySQL are reused. An interrupted
+update uses `recover` from the same bundle. Automatic downloading is not supplied.
+
+The initial move from PHP Desktop 5.6 requires the new runtime and a migrated
+database once; the application-only bundle cannot perform that first move.
+See the [backup, restore and update guide](docs/runbooks/backup-restore.md).
 
 ## If Doyel does not open
 

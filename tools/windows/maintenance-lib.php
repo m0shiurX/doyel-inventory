@@ -49,7 +49,7 @@ function doyel_windows_powershell(array $context,string $script,array $input=[],
         $result=file_get_contents($out);if($result===false || strlen($result)>65536)throw new RuntimeException('Invalid native result');return ltrim($result,"\xEF\xBB\xBF");
     } finally {if(is_file($out))unlink($out);if(is_file($err))unlink($err);}
 }
-function doyel_windows_context(string $app,bool $installing=false): array
+function doyel_windows_context(string $app,bool $installing=false,bool $updater=false): array
 {
     if(PHP_OS_FAMILY!=='Windows')throw new RuntimeException('Windows owner operation required');
     $resolved=realpath($app);$base=getenv('ProgramData');
@@ -59,8 +59,8 @@ function doyel_windows_context(string $app,bool $installing=false): array
         $probe=$path;while($probe!==dirname($probe)){if(is_link($probe))throw new RuntimeException('Installed path is linked');$probe=dirname($probe);}
         if(realpath($path)===false || doyel_windows_key((string)realpath($path))!==doyel_windows_key($path))throw new RuntimeException('Installed path mismatch');
     }
-    $context=['app'=>$app,'state'=>$state];doyel_windows_audit($context);
-    doyel_windows_web_proof((string)file_get_contents($state.'/config/httpd.conf'),(string)file_get_contents($app.'/www/config.local.php'),$app,$state);
+    $context=['app'=>$app,'state'=>$state,'updater'=>$updater];doyel_windows_audit($context);
+    if(!is_dir($app.'/www')&&$updater){if(str_replace("\r\n","\n",(string)file_get_contents($state.'/config/httpd.conf'))!==str_replace("\r\n","\n",doyel_windows_apache_conf($app,$state)))throw new RuntimeException('Customized web configuration');}else doyel_windows_web_proof((string)file_get_contents($state.'/config/httpd.conf'),(string)file_get_contents($app.'/www/config.local.php'),$app,$state);
     if(filesize($state.'/installation.json')>16384)throw new RuntimeException('Invalid installation record');
     $saved=json_decode(file_get_contents($state.'/installation.json'),true,16,JSON_THROW_ON_ERROR);$services=$saved['services'] ?? [];sort($services);
     if(($saved['format'] ?? null)!==1 || doyel_windows_key($saved['app'] ?? '')!==doyel_windows_key($app) || $services!==['DoyelDB','DoyelWeb'] || !in_array($saved['status'] ?? '',$installing?['installing','installed']:['installed'],true))throw new RuntimeException('Installation ownership mismatch');
@@ -102,9 +102,11 @@ $restore=Join-Path $v.state 'restore';if(Test-Path -LiteralPath $restore){
  Check-Path $restore 'webread'
  foreach($area in @('owner','published')){$path=Join-Path $restore $area;if(Test-Path -LiteralPath $path){$kind=if($area -eq 'owner'){'secret'}else{'webread'};Check-Path $path $kind;Get-ChildItem -LiteralPath $path -Force -Recurse|ForEach-Object{Check-Path $_.FullName $kind}}}
 }
-Check-Path $v.app 'code';foreach($folder in @('maintenance','www','installer','php','apache','mysql')){$path=Join-Path $v.app $folder;Check-Path $path 'code';Get-ChildItem -LiteralPath $path -Force -Recurse|ForEach-Object{Check-Path $_.FullName 'code'}}
+foreach($f in @('update-active.json','update.lock')){$p=Join-Path $v.state ('maintenance\'+$f);if(Test-Path -LiteralPath $p){Check-Path $p 'secret'}}
+$updates=Join-Path $v.state 'maintenance\updates';if(Test-Path -LiteralPath $updates){Check-Path $updates 'secret';Get-ChildItem -LiteralPath $updates -Force -Recurse|ForEach-Object{Check-Path $_.FullName 'secret'}}
+Check-Path $v.app 'code';foreach($folder in @('maintenance','www','installer','php','apache','mysql')){$path=Join-Path $v.app $folder;if($v.updater -and $folder -in @('www','maintenance') -and -not(Test-Path -LiteralPath $path)){continue};Check-Path $path 'code';Get-ChildItem -LiteralPath $path -Force -Recurse|ForEach-Object{Check-Path $_.FullName 'code'}}
 PS;
-    doyel_windows_powershell($context,$script,['app'=>$context['app'],'state'=>$context['state']]);
+    doyel_windows_powershell($context,$script,['app'=>$context['app'],'state'=>$context['state'],'updater'=>$context['updater']??false]);
 }
 function doyel_windows_acl(array $context,string $path,bool $directory,?string $webRights=null,bool $keepDiagnostic=true): void
 {
@@ -132,7 +134,7 @@ function doyel_windows_service(array $context,string $operation): void
 {
     if(!in_array($operation,['stop','start'],true))throw new RuntimeException('Fixed service operation required');
     // Recheck native ownership immediately before control; never touch DoyelDB.
-    doyel_windows_context($context['app']);
+    doyel_windows_context($context['app'],false,$context['updater']??false);
     $script=$operation==='stop'?"$"."s=Get-Service -Name DoyelWeb; if($"."s.Status -ne 'Stopped'){Stop-Service -Name DoyelWeb; $"."s.WaitForStatus('Stopped',[TimeSpan]::FromSeconds(45))}":"$"."s=Get-Service -Name DoyelWeb; if($"."s.Status -ne 'Running'){Start-Service -Name DoyelWeb; $"."s.WaitForStatus('Running',[TimeSpan]::FromSeconds(45))}";
     doyel_windows_powershell($context,$script);
 }
@@ -173,7 +175,7 @@ PS,['path'=>$root]);
     $path=$state.'/maintenance/restore-owner.php';
     if(file_exists($path)){
         $existing=restore_worker_load_config($path);
-        if($existing['restore_dir']!==$root || $existing['runtime_config']!==$state.'/config/runtime.php' || $existing['web_roots']!==[$context['app'].'/www'] || $existing['owner_user']!=='root' || $existing['owner_password']!==$owner['owner_password'])throw new RuntimeException('Existing owner configuration requires review');return;
+        if(doyel_windows_key($existing['restore_dir'])!==doyel_windows_key($root) || doyel_windows_key($existing['runtime_config'])!==doyel_windows_key($state.'/config/runtime.php') || array_map('doyel_windows_key',$existing['web_roots'])!==[doyel_windows_key($context['app'].'/www')] || $existing['owner_user']!=='root' || $existing['owner_password']!==$owner['owner_password'])throw new RuntimeException('Existing owner configuration requires review');return;
     }
     $h=fopen($path,'xb');if(!$h)throw new RuntimeException('Cannot provision owner configuration');try{doyel_backup_package_write_bytes($h,restore_finish_bytes($owner));if(!fflush($h)||(function_exists('fsync')&&!fsync($h)))throw new RuntimeException('Cannot sync owner configuration');}finally{fclose($h);}doyel_windows_acl($context,$path,false,null);
 }

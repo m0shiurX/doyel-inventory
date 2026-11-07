@@ -23,7 +23,7 @@ new-database, evidence-review and controlled-activation workflow.
 | R6 freeze, backup and activation | implemented; native Windows gate pending |
 | R7 acceptance/rollback/audit | complete; native interruption acceptance pending |
 | R8a owner conversion and Windows maintenance integration | implemented; native Windows acceptance pending |
-| R8b application-only update packaging and installation | todo |
+| R8b application-only update packaging and installation | implemented; native Windows acceptance pending |
 
 ## Intended result
 

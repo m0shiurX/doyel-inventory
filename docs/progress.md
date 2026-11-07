@@ -100,3 +100,11 @@ inventory, a real off-machine backup, live cleanup-preview sign-off and producti
 deployment. MySQL 8.4 is locally verified; MariaDB requires separate acceptance.
 No production changes were performed. Follow these gates rather than treating
 local PHP CLI/container tests as Windows acceptance.
+
+## Backup, restore and update (2026-11-07)
+
+R1–R8b of `docs/plan/backup-restore-ui.md` are implemented; see `docs/reports/R8b.md`
+for the final verification. Repository work is complete. Remaining gates are
+owner-run on Windows: compile the 1.1.0 installer, test first install, restore and
+application-only update on a test machine, then install on the production PC with
+a freshly exported and migrated database. Production remains untouched.

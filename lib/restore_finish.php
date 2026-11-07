@@ -79,12 +79,12 @@ function restore_finish_run(array $config,string $id,string $operation,array $cr
     $gate=null; $owner=null; $frozen=false;
     try {
         $job=restore_jobs_read_json($dir.'/journal.json'); $record=restore_jobs_read_json($dir.'/recovery.json');
-        if (($record['version'] ?? null)!==1 || ($record['job_id'] ?? null)!==$id || ($record['runtime_config'] ?? null)!==$config['runtime_config']) throw new RuntimeException('Recovery identity mismatch');
+        if (($record['version'] ?? null)!==1 || ($record['job_id'] ?? null)!==$id || !is_string($record['runtime_config'] ?? null) || restore_jobs_path_key($record['runtime_config'])!==restore_jobs_path_key($config['runtime_config'])) throw new RuntimeException('Recovery identity mismatch');
         $old=$record['old_config']; $new=$record['new_config'];
         $probe=$config; $probe['active_database']=$record['retained_database'];
         $candidate=restore_jobs_read_json($dir.'/candidate.json'); restore_worker_candidate_identity($probe,$candidate);
         if ($candidate['job_id']!==$id || $candidate['source_package_sha256']!==$job['sha256'] || $candidate['candidate_database']!==$record['candidate_database'] || !$candidate['importer_revoked'] || !is_array($candidate['validation_receipt'])) throw new RuntimeException('Candidate evidence identity mismatch');
-        foreach([$old,$new] as $runtime) if (($runtime['db_host'] ?? null)!==$config['host'] || ($runtime['db_port'] ?? null)!==$config['port'] || ($runtime['restore_dir'] ?? null)!==$root || !is_int($runtime['restore_generation'] ?? null)) throw new RuntimeException('Recovery endpoint mismatch');
+        foreach([$old,$new] as $runtime) if (($runtime['db_host'] ?? null)!==$config['host'] || ($runtime['db_port'] ?? null)!==$config['port'] || !is_string($runtime['restore_dir'] ?? null) || restore_jobs_path_key($runtime['restore_dir'])!==restore_jobs_path_key($root) || !is_int($runtime['restore_generation'] ?? null)) throw new RuntimeException('Recovery endpoint mismatch');
         if ($old['db_name']!==$record['retained_database'] || $new['db_name']!==$candidate['candidate_database'] || $new['restore_generation']!==$old['restore_generation']+1
             || $record['old_account']!==['user'=>$old['db_user'],'host'=>$record['old_account']['host']] || $record['new_account']!==['user'=>$new['db_user'],'host'=>$record['old_account']['host']]
             || !preg_match('/^dya_[a-f0-9]{24}$/D',$new['db_user'])) throw new RuntimeException('Recovery connection identity mismatch');

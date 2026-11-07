@@ -15,3 +15,6 @@ tools/windows/maintenance-lib.php
 tools/windows/maintenance.php
 tools/windows/server-config.php
 tools/windows/Database-Maintenance.bat
+tools/windows/update-package.php
+tools/windows/update-core.php
+tools/windows/update.php

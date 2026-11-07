@@ -1,0 +1,4 @@
+<?php
+if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
+function doyel_build_metadata(string $id):string{if(!preg_match('/^[A-Za-z0-9][A-Za-z0-9._+-]{0,95}$/D',$id))throw new RuntimeException('Reviewed build identifier required');return "<?php\nreturn ".var_export(['build'=>$id],true).";\n";}
+function doyel_build_source_id(string $root):string{$p=proc_open(['git','-C',$root,'rev-parse','--short=12','HEAD'],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);if(!is_resource($p))throw new RuntimeException('Pass an explicit reviewed build ID');fclose($pipes[0]);$id=trim(stream_get_contents($pipes[1]));fclose($pipes[1]);stream_get_contents($pipes[2]);fclose($pipes[2]);if(proc_close($p)!==0||!preg_match('/^[a-f0-9]{7,40}$/D',$id))throw new RuntimeException('Pass an explicit reviewed build ID');return 'source-'.$id;}
