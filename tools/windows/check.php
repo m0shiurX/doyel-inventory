@@ -41,8 +41,14 @@ try {
     }
     $expected = [...$allowlist, 'config.local.php']; sort($expected); sort($actual);
     expect($actual === $expected, 'Application payload must match the runtime allowlist exactly');
+    $maintenance=file(__DIR__.'/../prod/maintenance-files.txt',FILE_IGNORE_NEW_LINES|FILE_SKIP_EMPTY_LINES);$actualOwner=[];
+    foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($testRoot.'/bundle/payload/maintenance',FilesystemIterator::SKIP_DOTS)) as $entry)$actualOwner[]=str_replace('\\','/',substr($entry->getPathname(),strlen($testRoot.'/bundle/payload/maintenance/')));
+    sort($maintenance);sort($actualOwner);expect($actualOwner===$maintenance,'Owner payload must match its separate allowlist');
+    foreach(['lib/restore_worker.php','lib/restore_activation.php','lib/restore_finish.php','tools/windows/maintenance.php'] as $file)expect(!file_exists($testRoot.'/bundle/payload/www/'.$file),'Privileged helper must never be public');
     $stub = file_get_contents($testRoot . '/bundle/payload/www/config.local.php');
     expect(str_contains($stub, "getenv('ProgramData')") && !str_contains($stub, $testRoot), 'Client config must not retain build-host paths');
+    expect($stub===doyel_windows_config_stub(),'Authoritative Windows config stub must match the trusted template');
+    expect(str_contains(php_ini('C:/Program Files/Doyel','C:/ProgramData/Doyel'),'upload_max_filesize=64M'),'Missing restore upload limits');
     [$code] = run_build($args);
     expect($code !== 0, 'Existing output must never be overwritten');
     $args[0] = $testRoot . '/bad-bundle';

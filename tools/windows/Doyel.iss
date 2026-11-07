@@ -1,7 +1,7 @@
 ; First-install candidate. Requires a reviewed current-schema SQL export.
 ; Build the external payload with build-bundle.php before compiling this file.
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.1.0"
 #endif
 
 [Setup]
@@ -27,6 +27,7 @@ Source: "payload\apache\*"; DestDir: "{app}\apache"; Flags: ignoreversion recurs
 Source: "payload\php\*"; DestDir: "{app}\php"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "payload\mysql\*"; DestDir: "{app}\mysql"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "payload\www\*"; DestDir: "{app}\www"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "payload\maintenance\*"; DestDir: "{app}\maintenance"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "payload\installer\manage.php"; DestDir: "{app}\installer"; Flags: ignoreversion
 Source: "payload\installer\launch.php"; DestDir: "{app}\installer"; Flags: ignoreversion
 Source: "payload\prerequisites\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
@@ -34,6 +35,7 @@ Source: "payload\prerequisites\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: dele
 [Icons]
 Name: "{autodesktop}\Doyel"; Filename: "{app}\php\php-win.exe"; Parameters: "-n ""{app}\installer\launch.php"""; WorkingDir: "{app}"
 Name: "{autoprograms}\Doyel"; Filename: "{app}\php\php-win.exe"; Parameters: "-n ""{app}\installer\launch.php"""; WorkingDir: "{app}"
+Name: "{autoprograms}\Doyel Database Maintenance"; Filename: "{app}\maintenance\tools\windows\Database-Maintenance.bat"; WorkingDir: "{app}"
 
 [Code]
 var

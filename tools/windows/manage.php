@@ -1,6 +1,7 @@
 <?php
 // Owner/elevated installer tool. Never publish in www. First installations only.
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+require_once is_file(__DIR__ . '/server-config.php') ? __DIR__ . '/server-config.php' : dirname(__DIR__) . '/maintenance/tools/windows/server-config.php';
 
 function write_file(string $path, string $value): void {
     if (file_put_contents($path, $value) !== strlen($value)) throw new RuntimeException('Cannot write ' . basename($path));
@@ -63,45 +64,9 @@ function php_ini(string $app, string $state): string {
     return "extension_dir=\"$app/php/ext\"\nextension=pdo_mysql\nextension=mbstring\n" .
         "date.timezone=Asia/Dhaka\ndisplay_errors=Off\nlog_errors=On\n" .
         "error_log=\"$state/logs/php-error.log\"\nsession.save_path=\"$state/sessions\"\n" .
-        "sys_temp_dir=\"$state/tmp\"\nupload_tmp_dir=\"$state/tmp\"\nmemory_limit=128M\n";
+        "sys_temp_dir=\"$state/tmp\"\nupload_tmp_dir=\"$state/tmp\"\nmemory_limit=128M\nupload_max_filesize=64M\npost_max_size=66M\n";
 }
-function apache_conf(string $app, string $state): string {
-    return <<<CONF
-ServerRoot "$app/apache"
-Listen 127.0.0.1:18080
-ServerName 127.0.0.1:18080
-LoadModule authz_core_module modules/mod_authz_core.so
-LoadModule authz_host_module modules/mod_authz_host.so
-LoadModule log_config_module modules/mod_log_config.so
-LoadModule mime_module modules/mod_mime.so
-LoadModule dir_module modules/mod_dir.so
-LoadFile "$app/php/php8ts.dll"
-LoadModule php_module "$app/php/php8apache2_4.dll"
-PHPIniDir "$state/config"
-TypesConfig conf/mime.types
-DocumentRoot "$app/www"
-DirectoryIndex index.php
-<Directory />
-    AllowOverride None
-    Require all denied
-</Directory>
-<Directory "$app/www">
-    Options -Indexes
-    AllowOverride None
-    Require local
-</Directory>
-<FilesMatch "\\.php$">
-    SetHandler application/x-httpd-php
-</FilesMatch>
-<FilesMatch "(?i)^(\\.|config\\.(local|sample)\\.php$)|\\.(sql|log|ini|cnf|bak)$">
-    Require all denied
-</FilesMatch>
-ErrorLog "$state/logs/apache-error.log"
-CustomLog "$state/logs/apache-access.log" common
-PidFile "$state/tmp/httpd.pid"
-
-CONF;
-}
+function apache_conf(string $app, string $state): string { return doyel_windows_apache_conf($app,$state); }
 function mysql_conf(string $app, string $state): string {
     return "[mysqld]\nbasedir=\"$app/mysql\"\ndatadir=\"$state/data\"\nport=13306\n" .
         "bind-address=127.0.0.1\nmysqlx=0\ncharacter-set-server=utf8mb4\n" .
@@ -129,15 +94,16 @@ try {
         if (!defined('PASSWORD_ARGON2ID')) throw new RuntimeException('Argon2id missing');
         foreach (["nul\0password", str_repeat('x', 73)] as $password) if (!password_verify($password, password_hash($password, PASSWORD_ARGON2ID))) throw new RuntimeException('Password runtime check failed');
         $c = require $state . '/config/runtime.php';
-        $db = new PDO('mysql:host=127.0.0.1;port=13306;dbname=software;charset=utf8mb4', $c['db_user'], $c['db_pass'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        if (!preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/D', $c['db_name'] ?? '')) throw new RuntimeException('Invalid runtime database');
+        $db = new PDO('mysql:host=127.0.0.1;port=13306;dbname=' . $c['db_name'] . ';charset=utf8mb4', $c['db_user'], $c['db_pass'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $expected = ['canteen_ac_head','canteen_collection','canteen_customar','canteen_expenses','canteen_item','canteen_purchase','canteen_purchase_detail','canteen_sales','canteen_sales_detail','canteen_stock','canteen_stock_detail','canteen_supplier','l_user'];
         $tables = $db->query('SHOW FULL TABLES')->fetchAll(PDO::FETCH_COLUMN); sort($tables);
         if ($tables !== $expected) throw new RuntimeException('Expected exactly 13 Doyel tables');
-        $invalid = $db->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='software' AND (ENGINE<>'InnoDB' OR TABLE_COLLATION<>'utf8mb4_unicode_ci')")->fetchColumn();
+        $invalid = $db->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND (ENGINE<>'InnoDB' OR TABLE_COLLATION<>'utf8mb4_unicode_ci')")->fetchColumn();
         if ((int)$invalid !== 0) throw new RuntimeException('Expected migrated InnoDB/utf8mb4 tables');
-        $type = $db->query("SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='software' AND TABLE_NAME='canteen_item' AND COLUMN_NAME='Qnty'")->fetchColumn();
-        $fk = $db->query("SELECT COUNT(*) FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA='software'")->fetchColumn();
-        $unique = $db->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='software' AND TABLE_NAME='l_user' AND INDEX_NAME='uq_l_user_username' AND NON_UNIQUE=0")->fetchColumn();
+        $type = $db->query("SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='canteen_item' AND COLUMN_NAME='Qnty'")->fetchColumn();
+        $fk = $db->query("SELECT COUNT(*) FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE()")->fetchColumn();
+        $unique = $db->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='l_user' AND INDEX_NAME='uq_l_user_username' AND NON_UNIQUE=0")->fetchColumn();
         if ($type !== 'decimal(12,3)' || (int)$fk !== 4 || (int)$unique !== 1) throw new RuntimeException('Current migrated schema is required; see cutover.md');
         if ((int)$db->query('SELECT COUNT(*) FROM l_user WHERE userAtho=1')->fetchColumn() < 1) throw new RuntimeException('An approved admin account is required');
         echo "PHP and database smoke checks passed. Full schema/data acceptance remains required.\n";
@@ -230,6 +196,7 @@ try {
     foreach ([$state, $state . '/config'] as $dir) command(['icacls.exe', $dir, '/grant', 'NT SERVICE\\DoyelWeb:(RX)']);
     foreach (['runtime.php', 'httpd.conf', 'php.ini'] as $file) command(['icacls.exe', $state . '/config/' . $file, '/grant', 'NT SERVICE\\DoyelWeb:(R)']);
     foreach (['logs', 'sessions', 'tmp'] as $dir) command(['icacls.exe', $state . '/' . $dir, '/grant', 'NT SERVICE\\DoyelWeb:(OI)(CI)M']);
+    command([$app . '/php/php.exe', '-c', $state . '/config/php.ini', $app . '/maintenance/tools/windows/maintenance.php', '--app=' . $app, '--provision']);
     $token = bin2hex(random_bytes(16));
     $probe = $app . '/www/installer-health-' . $token . '.php';
     write_file($probe, '<?php require __DIR__ . "/lib/bootstrap.php"; header("Content-Type: application/json"); echo json_encode(["token" => ' . var_export($token, true) . ', "db" => db_value("SELECT DATABASE()"), "php" => PHP_VERSION_ID]);');

@@ -7,7 +7,9 @@ remote Windows builder.
 
 **This is an unverified first-install candidate, not a production release.**
 No Windows binaries are checked in, and no `.exe` has been compiled or run here.
-Updates/repair and automatic daily backups are not implemented. Do not use it
+The current source also packages the new owner restore helper; the older linked
+prerelease bundle does not contain that feature. Application-only updates are a
+separate delivery path. Automatic daily backups are not implemented. Do not use it
 on the client's only copy of their data. Use a clean Windows test VM first.
 
 Regular users should start with the [installation and daily-use guide](../../README.md).
@@ -76,7 +78,7 @@ The temporary paths above are examples; macOS may remove them.
    ```
 
 4. The script verifies the assembled files and compiles `Doyel.iss`. The output
-   is `output\DoyelSetup-1.0.0.exe`. Inno compiles the installer, not PHP source
+   is `output\DoyelSetup-1.1.0.exe`. Inno compiles the installer, not PHP source
    into native application code.
 
 The batch script runs inline PowerShell for hashing; it does not change Windows
@@ -142,3 +144,45 @@ php tools/windows/check.php
 
 `check.php` uses synthetic PE headers solely to exercise packaging and rejects
 existing output directories. It does not substitute for a Windows build or test.
+
+## Restore helper in current source
+
+The builder creates separate `payload/www` and `payload/maintenance` trees from
+explicit allowlists. Provisioning/activation/finish code is never published under
+`www`. First installation provisions `%ProgramData%\Doyel\restore`, its writable
+inbox, read-only published status/gate, and owner-only job/credential storage.
+The private runtime config receives backup/restore locations and generation zero.
+
+After a Windows acceptance test, use **Accounts > Backup & restore** to download
+or upload `.doyel.gz` packages. Open **Doyel Database Maintenance** from Start and
+approve UAC. Type `prepare` to handle the next queued upload. Review its job in
+the browser, request activation, then reopen the helper with `activate` and the
+job reference. Passwords are requested in its secure local console. The service
+is stopped during switching; MySQL remains running. Reopen the saved job and log
+in for read-only acceptance, then request/complete `accept` with administrator
+and ordinary-user credentials. `rollback` is available before acceptance;
+`recover` explicitly reconciles a saved interrupted operation. Both databases
+and verified recovery exports remain retained. See the
+[backup/restore guide](../../docs/runbooks/backup-restore.md).
+
+The adapter refuses customized Apache configuration, unknown service executable
+or configuration paths, missing elevation, unsafe ACLs, symlinks/reparse paths,
+or private credentials accessible outside the intended owner boundary. It audits
+code for untrusted write permissions before requiring private PHP configuration.
+Native ACL/service/console and interrupted-reboot acceptance is still required;
+these are implemented candidates, not Windows-tested guarantees.
+
+An owner can convert an approved, already migrated **existing database** with:
+
+```bat
+"C:\Program Files\Doyel\php\php.exe" -c "%ProgramData%\Doyel\config\php.ini" "C:\Program Files\Doyel\maintenance\tools\restore\convert.php" --config="%ProgramData%\Doyel\maintenance\restore-owner.php" --database=approved_database --output="C:\PrivateBackups\converted.doyel.gz"
+```
+
+The output must be new and outside web roots; choose an owner-private directory.
+Conversion requires the canonical schema and valid relationships, briefly holds
+READ locks while exporting a consistent package, and changes no records or
+credentials. It never executes a supplied SQL file or reapplies old cleanup.
+Legacy SQL follows the reviewed migration/import runbook. A refused conversion
+can retain a partial file where the platform does not expose a reliable file
+identity; inspect/remove that newly generated partial as the owner and choose a
+new output name. Existing output files are never replaced.

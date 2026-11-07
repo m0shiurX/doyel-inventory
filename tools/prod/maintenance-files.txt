@@ -1,0 +1,17 @@
+lib/app_version.php
+lib/auth.php
+lib/backup_package.php
+lib/backup_schema.php
+lib/restore_activation.php
+lib/restore_finish.php
+lib/restore_jobs.php
+lib/restore_maintenance.php
+lib/restore_worker.php
+tools/restore/activate.php
+tools/restore/convert.php
+tools/restore/finish.php
+tools/restore/worker.php
+tools/windows/maintenance-lib.php
+tools/windows/maintenance.php
+tools/windows/server-config.php
+tools/windows/Database-Maintenance.bat

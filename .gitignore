@@ -2,6 +2,7 @@
 *.sql
 *.sql.zip
 *.sql.gz
+*.doyel.gz
 # Migration and cleanup SQL are source code, not private dumps.
 !/db/migrations/**/*.sql
 !/db/cleanup/**/*.sql

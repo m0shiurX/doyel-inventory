@@ -67,6 +67,8 @@ try {
     mkdir($output . '/private-build', 0700);
     $process = proc_open([PHP_BINARY, $root . '/tools/prod/build-release.php', $output . '/payload/www', $output . '/private-build/runtime.php'], [0 => STDIN, 1 => STDOUT, 2 => STDERR], $pipes);
     if (!is_resource($process) || proc_close($process) !== 0) throw new RuntimeException('Application release build failed');
+    $process = proc_open([PHP_BINARY, $root . '/tools/prod/build-maintenance.php', $output . '/payload/maintenance'], [0 => STDIN, 1 => STDOUT, 2 => STDERR], $pipes);
+    if (!is_resource($process) || proc_close($process) !== 0) throw new RuntimeException('Owner maintenance build failed');
     rmdir($output . '/private-build');
     // Resolve ProgramData on the client's PC, not the Mac/build machine.
     $stub = <<<'PHP'
