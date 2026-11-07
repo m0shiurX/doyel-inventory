@@ -6,14 +6,12 @@ after installation.
 
 ## Download status
 
-The current source includes a **1.1.0 restore/update candidate**. It has not passed
-native Windows acceptance and is not a newly published installer release. The
-older prerelease below does not include the new restore UI or application updater.
-
-The [Windows bundle prerelease](https://github.com/m0shiurX/doyel-inventory/releases/tag/windows-bundle-2026-11-01)
-contains the application, Windows runtimes, and installer build tools. **It is a
-build bundle, not a ready-to-install Doyel EXE.** It was assembled and checked on
-macOS; Windows installation and printing have not been tested yet.
+The [1.1.0 Windows prerelease](https://github.com/m0shiurX/doyel-inventory/releases/tag/windows-bundle-2026-11-07)
+contains the application, Windows runtimes, installer build tools and a separate
+application-only update. **It is a build bundle, not a ready-to-install Doyel EXE.**
+It was assembled and checked on macOS; Windows installation, updates, restore and
+printing have not been tested yet. The older 2026-11-01 prerelease does not include
+the restore UI or application updater.
 
 If you are a regular user, ask your support person for a Windows-tested
 `DoyelSetup-1.1.0.exe` and your login details. You do not need to install developer
@@ -62,9 +60,8 @@ repair and automatic legacy migration are not supplied.
 
 ## Daily use
 
-The linked older prerelease does not contain the new restore/update workflow.
-The current source builds a 1.1.0 candidate; it still needs Windows acceptance
-before your support person supplies it for live use.
+The 1.1.0 prerelease still needs Windows acceptance before your support person
+supplies it for live use.
 
 1. Open **Doyel** from its shortcut. The local services start automatically with
    Windows; the launcher waits briefly for them before opening the browser.

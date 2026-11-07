@@ -7,13 +7,13 @@ remote Windows builder.
 
 **This is an unverified first-install candidate, not a production release.**
 No Windows binaries are checked in, and no `.exe` has been compiled or run here.
-The current source also packages the new owner restore helper; the older linked
-prerelease bundle does not contain that feature. Application-only updates are a
-separate delivery path. Automatic daily backups are not implemented. Do not use it
+It packages the owner restore helper; the older 2026-11-01 prerelease does not
+contain that feature. Application-only updates are a separate delivery path.
+Automatic daily backups are not implemented. Do not use it
 on the client's only copy of their data. Use a clean Windows test VM first.
 
 Regular users should start with the [installation and daily-use guide](../../README.md).
-The [Windows bundle prerelease](https://github.com/m0shiurX/doyel-inventory/releases/tag/windows-bundle-2026-11-01)
+The [1.1.0 Windows prerelease](https://github.com/m0shiurX/doyel-inventory/releases/tag/windows-bundle-2026-11-07)
 contains the assembled runtime payload and the offline Inno Setup 6.7.4 compiler
 installer in `build-tools`. Extract the full ZIP on Windows, install that compiler
 on the build PC, and run `Build-Windows.bat` in the bundle folder.

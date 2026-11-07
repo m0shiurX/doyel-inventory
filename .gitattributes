@@ -2,3 +2,5 @@
 *.php text=auto eol=lf
 *.js text=auto eol=lf
 *.css text=auto eol=lf
+# cmd.exe can misparse LF-only batch files, including multi-line blocks.
+tools/windows/*.bat text eol=crlf
